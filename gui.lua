@@ -1,7 +1,6 @@
 --[================================================================[
-    CAM HUB UI - PIXEL-ACCURATE ROBLOX UI ENGINEERING & DESIGN
+    CAM HUB UI - REBRANDED & SIDEBAR CLEANED
     Self-Contained LocalScript Implementation
-    Branding: "Pulse Hub" renamed to "Cam Hub"
 --]================================================================]
 
 local Players = game:GetService("Players")
@@ -41,8 +40,8 @@ local Theme = {
 -- Main Window Frame
 local mainWindow = Instance.new("Frame")
 mainWindow.Name = "MainWindow"
-mainWindow.Size = UDim2.new(0, 700, 0, 500)
-mainWindow.Position = UDim2.new(0.5, -350, 0.5, -250)
+mainWindow.Size = UDim2.new(0, 884, 0, 700)
+mainWindow.Position = UDim2.new(0.5, -442, 0.5, -350)
 mainWindow.BackgroundColor3 = Theme.Background
 mainWindow.BackgroundTransparency = 0.1
 mainWindow.BorderSizePixel = 0
@@ -102,19 +101,21 @@ sidebarStroke.Transparency = 0.6
 sidebarStroke.Thickness = 1
 sidebarStroke.Parent = sidebar
 
--- Header Area in Sidebar (Cam Hub Branding)
+-- Header Area in Sidebar (Cam Hub Branding & Logo Image)
 local brandContainer = Instance.new("Frame")
 brandContainer.Size = UDim2.new(1, 0, 0, 70)
 brandContainer.BackgroundTransparency = 1
 brandContainer.Parent = sidebar
 
-local logoPlaceholder = Instance.new("Frame")
-logoPlaceholder.Size = UDim2.new(0, 28, 0, 28)
-logoPlaceholder.Position = UDim2.new(0, 16, 0, 21)
-logoPlaceholder.BackgroundColor3 = Theme.Accent
-logoPlaceholder.BackgroundTransparency = 0.3
-logoPlaceholder.Parent = brandContainer
-Instance.new("UICorner", logoPlaceholder).CornerRadius = Theme.SmallCornerRadius
+-- SUPPLIED LOGO IMAGE: Replace "rbxassetid://0000000000" with your uploaded decal asset ID
+local logoImage = Instance.new("ImageLabel")
+logoImage.Name = "LogoImage"
+logoImage.Size = UDim2.new(0, 28, 0, 28)
+logoImage.Position = UDim2.new(0, 16, 0, 21)
+logoImage.BackgroundTransparency = 1
+logoImage.Image = "rbxassetid://0000000000" 
+logoImage.ScaleType = Enum.ScaleType.Fit
+logoImage.Parent = brandContainer
 
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(0, 150, 0, 20)
@@ -132,26 +133,16 @@ subtitleLabel.Size = UDim2.new(0, 150, 0, 16)
 subtitleLabel.Position = UDim2.new(0, 56, 0, 38)
 subtitleLabel.BackgroundTransparency = 1
 subtitleLabel.Font = Enum.Font.Gotham
-subtitleLabel.Text = "Steal an Egg"
+subtitleLabel.Text = "Blox Fruit"
 subtitleLabel.TextColor3 = Theme.TextSecondary
 subtitleLabel.TextSize = 12
 subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 subtitleLabel.Parent = brandContainer
 
-local collapseHint = Instance.new("Frame")
-collapseHint.Size = UDim2.new(0, 24, 0, 24)
-collapseHint.Position = UDim2.new(1, -36, 0, 23)
-collapseHint.BackgroundColor3 = Theme.CardBackground
-collapseHint.BorderSizePixel = 0
-collapseHint.Parent = brandContainer
-Instance.new("UICorner", collapseHint).CornerRadius = UDim.new(0, 4)
-local collapseStroke = Instance.new("UIStroke", collapseHint)
-collapseStroke.Color = Theme.Border
-
 -- Search Input in Sidebar
 local searchContainer = Instance.new("Frame")
 searchContainer.Size = UDim2.new(1, -32, 0, 36)
-searchContainer.Position = UDim2.new(0, 16, 0, 80)
+searchContainer.Position = UDim2.new(0, 16, 0, 84)
 searchContainer.BackgroundColor3 = Theme.CardBackground
 searchContainer.BorderSizePixel = 0
 searchContainer.Parent = sidebar
@@ -171,89 +162,6 @@ searchBox.TextColor3 = Theme.TextPrimary
 searchBox.TextSize = 13
 searchBox.TextXAlignment = Enum.TextXAlignment.Left
 searchBox.Parent = searchContainer
-
--- Navigation Scrolling Area
-local navScroll = Instance.new("ScrollingFrame")
-navScroll.Size = UDim2.new(1, 0, 1, -190)
-navScroll.Position = UDim2.new(0, 0, 0, 128)
-navScroll.BackgroundTransparency = 1
-navScroll.BorderSizePixel = 0
-navScroll.CanvasSize = UDim2.new(0, 0, 0, 450)
-navScroll.ScrollBarThickness = 3
-navScroll.ScrollBarImageColor3 = Theme.Border
-navScroll.Parent = sidebar
-
-local navLayout = Instance.new("UIListLayout")
-navLayout.SortOrder = Enum.SortOrder.LayoutOrder
-navLayout.Padding = UDim.new(0, 4)
-navLayout.Parent = navScroll
-
-local function createNavHeader(text)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -32, 0, 24)
-    lbl.Position = UDim2.new(0, 16, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.GothamBold
-    lbl.Text = text:upper()
-    lbl.TextColor3 = Theme.TextSecondary
-    lbl.TextSize = 11
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = navScroll
-end
-
-local function createNavItem(name, active)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -24, 0, 36)
-    btn.Position = UDim2.new(0, 12, 0, 0)
-    btn.BackgroundColor3 = active and Theme.CardBackgroundHover or Color3.new(0,0,0)
-    btn.BackgroundTransparency = active and 0 or 1
-    btn.AutoButtonColor = false
-    btn.Text = ""
-    btn.Parent = navScroll
-    
-    if active then
-        Instance.new("UICorner", btn).CornerRadius = Theme.SmallCornerRadius
-        local stroke = Instance.new("UIStroke", btn)
-        stroke.Color = Theme.Border
-        stroke.Transparency = 0.5
-    end
-    
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 18, 0, 18)
-    dot.Position = UDim2.new(0, 12, 0.5, -9)
-    dot.BackgroundColor3 = active and Theme.Accent or Theme.TextSecondary
-    dot.BackgroundTransparency = active and 0.2 or 0.5
-    dot.Parent = btn
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(0, 4)
-    
-    local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(1, -45, 1, 0)
-    txt.Position = UDim2.new(0, 40, 0, 0)
-    txt.BackgroundTransparency = 1
-    txt.Font = Enum.Font.GothamMedium
-    txt.Text = name
-    txt.TextColor3 = active and Theme.TextPrimary or Theme.TextSecondary
-    txt.TextSize = 13
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.Parent = btn
-    
-    return btn
-end
-
-createNavHeader("Farm")
-createNavItem("Eggs", true)
-createNavItem("Pets", false)
-createNavItem("Shop", false)
-createNavItem("Lab", false)
-
-createNavHeader("Events")
-createNavItem("Butterflies", false)
-createNavItem("Race", false)
-createNavItem("Stars", false)
-
-createNavHeader("Player")
-createNavItem("Player", false)
-createNavItem("ESP", false)
 
 -- Sidebar Footer
 local sidebarFooter = Instance.new("Frame")
@@ -304,7 +212,7 @@ pageTitle.Size = UDim2.new(0, 200, 1, 0)
 pageTitle.Position = UDim2.new(0, 24, 0, 0)
 pageTitle.BackgroundTransparency = 1
 pageTitle.Font = Enum.Font.GothamBold
-pageTitle.Text = "Eggs"
+pageTitle.Text = "Blox Fruit"
 pageTitle.TextColor3 = Theme.TextPrimary
 pageTitle.TextSize = 20
 pageTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -315,7 +223,7 @@ closeButton.Size = UDim2.new(0, 32, 0, 32)
 closeButton.Position = UDim2.new(1, -48, 0.5, -16)
 closeButton.BackgroundColor3 = Theme.CardBackground
 closeButton.BorderSizePixel = 0
-closeButton.Image = "rbxassetid://6031094678" -- Standard Close X icon
+closeButton.Image = "rbxassetid://6031094678"
 closeButton.ImageColor3 = Theme.TextSecondary
 closeButton.Parent = topHeader
 Instance.new("UICorner", closeButton).CornerRadius = UDim.new(0, 6)
@@ -536,16 +444,15 @@ local function createSlider(parent, labelText, yPos, min, max, default)
     return container
 end
 
--- ==================== POPULATE LEFT CARD (Steal Eggs) ====================
-local stealEggsCard = createCard(leftCol, "Steal Eggs", 480)
-createDropdown(stealEggsCard, "Areas", 52)
-createDropdown(stealEggsCard, "Rarities", 96)
-createDropdown(stealEggsCard, "Mutations", 140)
-createDropdown(stealEggsCard, "Target...", 184)
-createToggle(stealEggsCard, "Auto Steal Eggs", 230, false)
+-- ==================== POPULATE LEFT CARD (Auto Farm) ====================
+local autoFarmCard = createCard(leftCol, "Auto Farm", 480)
+createDropdown(autoFarmCard, "Quest", 52)
+createDropdown(autoFarmCard, "Weapon", 96)
+createDropdown(autoFarmCard, "Method", 140)
+createDropdown(autoFarmCard, "Target...", 184)
+createToggle(autoFarmCard, "Auto Farm Level", 230, false)
 
--- Special toggle key pill component
-local keyContainer = Instance.new("Frame", stealEggsCard)
+local keyContainer = Instance.new("Frame", autoFarmCard)
 keyContainer.Size = UDim2.new(1, -28, 0, 32)
 keyContainer.Position = UDim2.new(0, 14, 0, 270)
 keyContainer.BackgroundTransparency = 1
@@ -553,7 +460,7 @@ local keyLbl = Instance.new("TextLabel", keyContainer)
 keyLbl.Size = UDim2.new(1, -60, 1, 0)
 keyLbl.BackgroundTransparency = 1
 keyLbl.Font = Enum.Font.GothamMedium
-keyLbl.Text = "Steal toggle key"
+keyLbl.Text = "Farm toggle key"
 keyLbl.TextColor3 = Theme.TextPrimary
 keyLbl.TextSize = 13
 keyLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -570,66 +477,65 @@ keyBtn.TextSize = 12
 Instance.new("UICorner", keyBtn).CornerRadius = Theme.SmallCornerRadius
 Instance.new("UIStroke", keyBtn).Color = Theme.Border
 
-createToggle(stealEggsCard, "Auto Hit Stealers", 310, false)
-createToggle(stealEggsCard, "Ignore Friends", 350, true)
-createSlider(stealEggsCard, "Travel Speed", 390, 100, 300, 120)
-createToggle(stealEggsCard, "Custom Steal...", 440, false)
+createToggle(autoFarmCard, "Fast Attack", 310, false)
+createToggle(autoFarmCard, "Bring Mobs", 350, true)
+createSlider(autoFarmCard, "Attack Delay", 390, 0, 100, 20)
+createToggle(autoFarmCard, "Auto Haki", 440, false)
 
 -- ==================== POPULATE RIGHT CARDS ====================
--- Index Farm Card
-local indexCard = createCard(rightCol, "Index Farm", 280)
-local indexInfo = Instance.new("TextLabel", indexCard)
-indexInfo.Size = UDim2.new(1, -28, 0, 36)
-indexInfo.Position = UDim2.new(0, 14, 0, 48)
-indexInfo.BackgroundTransparency = 1
-indexInfo.Font = Enum.Font.Gotham
-indexInfo.Text = "Missing: 112 | In eggs: 0\nTarget: -"
-indexInfo.TextColor3 = Theme.TextSecondary
-indexInfo.TextSize = 12
-indexInfo.TextXAlignment = Enum.TextXAlignment.Left
+-- Stats Card
+local statsCard = createCard(rightCol, "Stats Upgrade", 280)
+local statsInfo = Instance.new("TextLabel", statsCard)
+statsInfo.Size = UDim2.new(1, -28, 0, 36)
+statsInfo.Position = UDim2.new(0, 14, 0, 48)
+statsInfo.BackgroundTransparency = 1
+statsInfo.Font = Enum.Font.Gotham
+statsInfo.Text = "Level: 2550 | Points: 0\nSelected: Melee"
+statsInfo.TextColor3 = Theme.TextSecondary
+statsInfo.TextSize = 12
+statsInfo.TextXAlignment = Enum.TextXAlignment.Left
 
-createToggle(indexCard, "Auto Index Farm", 92, false)
-createToggle(indexCard, "Place Index Eggs", 132, false)
-createToggle(indexCard, "Hatch Index Eggs", 172, false)
+createToggle(statsCard, "Auto Stats Melee", 92, false)
+createToggle(statsCard, "Auto Stats Defense", 132, false)
+createToggle(statsCard, "Auto Stats Sword", 172, false)
 
-local statusLbl = Instance.new("TextLabel", indexCard)
+local statusLbl = Instance.new("TextLabel", statsCard)
 statusLbl.Size = UDim2.new(1, -28, 0, 30)
 statusLbl.Position = UDim2.new(0, 14, 0, 214)
 statusLbl.BackgroundTransparency = 1
 statusLbl.Font = Enum.Font.Gotham
-statusLbl.Text = "• Off\nStolen: 0 | Placed: 0 | Hatched: 0"
+statusLbl.Text = "• Off\nBeli: 14.5M | Fragments: 25.4K"
 statusLbl.TextColor3 = Theme.TextSecondary
 statusLbl.TextSize = 11
 statusLbl.TextXAlignment = Enum.TextXAlignment.Left
 
--- Traps Card
-local trapsCard = createCard(rightCol, "Traps", 110)
-trapsCard.Position = UDim2.new(0, 0, 0, 295)
-createToggle(trapsCard, "Auto Use Traps", 48, false)
-local trapsStatus = Instance.new("TextLabel", trapsCard)
-trapsStatus.Size = UDim2.new(1, -28, 0, 20)
-trapsStatus.Position = UDim2.new(0, 14, 0, 82)
-trapsStatus.BackgroundTransparency = 1
-trapsStatus.Font = Enum.Font.Gotham
-trapsStatus.Text = "• Off"
-trapsStatus.TextColor3 = Theme.TextSecondary
-trapsStatus.TextSize = 11
-trapsStatus.TextXAlignment = Enum.TextXAlignment.Left
+-- Bosses Card
+local bossCard = createCard(rightCol, "Boss Farm", 110)
+bossCard.Position = UDim2.new(0, 0, 0, 295)
+createToggle(bossCard, "Auto Select Boss", 48, false)
+local bossStatus = Instance.new("TextLabel", bossCard)
+bossStatus.Size = UDim2.new(1, -28, 0, 20)
+bossStatus.Position = UDim2.new(0, 14, 0, 82)
+bossStatus.BackgroundTransparency = 1
+bossStatus.Font = Enum.Font.Gotham
+bossStatus.Text = "• Off"
+bossStatus.TextColor3 = Theme.TextSecondary
+bossStatus.TextSize, bossStatus.TextXAlignment = 11, Enum.TextXAlignment.Left
 
--- Server Hop Card
-local serverHopCard = createCard(rightCol, "Server Hop", 90)
-serverHopCard.Position = UDim2.new(0, 0, 0, 418)
+-- Teleport Card
+local tpCard = createCard(rightCol, "World Teleport", 90)
+tpCard.Position = UDim2.new(0, 0, 0, 418)
 
-local hopBtn = Instance.new("TextButton", serverHopCard)
+local hopBtn = Instance.new("TextButton", tpCard)
 hopBtn.Size = UDim2.new(1, -28, 0, 32)
 hopBtn.Position = UDim2.new(0, 14, 0, 46)
 hopBtn.BackgroundColor3 = Theme.Background
 hopBtn.AutoButtonColor = false
 hopBtn.Font = Enum.Font.GothamBold
-hopBtn.Text = "Hop Now"
+hopBtn.Text = "Teleport Sea 3"
 hopBtn.TextColor3 = Theme.TextPrimary
 hopBtn.TextSize = 13
 Instance.new("UICorner", hopBtn).CornerRadius = Theme.SmallCornerRadius
 Instance.new("UIStroke", hopBtn).Color = Theme.Border
 
-print("Cam Hub UI successfully loaded!")
+print("Cam Hub UI successfully loaded with Rebranded Logo & Cleaned Sidebar!")
