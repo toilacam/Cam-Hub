@@ -41,8 +41,8 @@ local Theme = {
 -- Main Window Frame
 local mainWindow = Instance.new("Frame")
 mainWindow.Name = "MainWindow"
-mainWindow.Size = UDim2.new(0, 884, 0, 700)
-mainWindow.Position = UDim2.new(0.5, -442, 0.5, -350)
+mainWindow.Size = UDim2.new(0, 700, 0, 500)
+mainWindow.Position = UDim2.new(0.5, -350, 0.5, -250)
 mainWindow.BackgroundColor3 = Theme.Background
 mainWindow.BackgroundTransparency = 0.1
 mainWindow.BorderSizePixel = 0
