@@ -1,5 +1,5 @@
 --[================================================================[
-    CAM HUB UI - INTEGRATED LOGO (Asset ID: 73919882310822)
+    CAM HUB UI - FIXED LOGO DISPLAY & TOP-LEFT ALIGNMENT
     Self-Contained LocalScript Implementation
 --]================================================================]
 
@@ -58,7 +58,7 @@ mainStroke.Transparency = 0.5
 mainStroke.Thickness = 1
 mainStroke.Parent = mainWindow
 
--- Tính năng kéo/di chuyển cửa sổ (Window Dragging)
+-- Kéo / Di chuyển cửa sổ
 local dragging, dragInput, dragStart, startPos
 mainWindow.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -101,25 +101,29 @@ sidebarStroke.Transparency = 0.6
 sidebarStroke.Thickness = 1
 sidebarStroke.Parent = sidebar
 
--- Brand Container (Chứa Logo & Tên Cam Hub)
+-- Brand Container (Khung chứa Logo & Text ở góc trên bên trái)
 local brandContainer = Instance.new("Frame")
+brandContainer.Name = "BrandContainer"
 brandContainer.Size = UDim2.new(1, 0, 0, 70)
 brandContainer.BackgroundTransparency = 1
 brandContainer.Parent = sidebar
 
--- LOGO CAM HUB VỚI ASSET ID MỚI
+-- LOGO CAM HUB (ĐÃ FIX ĐƯỜNG DẪN MỚI & ĐẶT VÀO GÓC TRÊN CÙNG BÊN TRÁI)
 local logoImage = Instance.new("ImageLabel")
 logoImage.Name = "CamHubLogo"
-logoImage.Size = UDim2.new(0, 32, 0, 32)
-logoImage.Position = UDim2.new(0, 16, 0, 19)
+logoImage.Size = UDim2.new(0, 36, 0, 36)
+logoImage.Position = UDim2.new(0, 16, 0, 16)
 logoImage.BackgroundTransparency = 1
-logoImage.Image = "rbxassetid://73919882310822"
+logoImage.Image = "http://www.roblox.com/asset/?id=73919882310822"
 logoImage.ScaleType = Enum.ScaleType.Fit
+logoImage.ZIndex = 5
 logoImage.Parent = brandContainer
 
+-- Tên "Cam Hub" được đẩy sang phải để không bị chèn lên Logo
 local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
 titleLabel.Size = UDim2.new(0, 150, 0, 20)
-titleLabel.Position = UDim2.new(0, 56, 0, 18)
+titleLabel.Position = UDim2.new(0, 60, 0, 16)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.Text = "Cam Hub"
@@ -128,9 +132,11 @@ titleLabel.TextSize = 16
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = brandContainer
 
+-- Subtitle "Blox Fruit"
 local subtitleLabel = Instance.new("TextLabel")
+subtitleLabel.Name = "SubtitleLabel"
 subtitleLabel.Size = UDim2.new(0, 150, 0, 16)
-subtitleLabel.Position = UDim2.new(0, 56, 0, 38)
+subtitleLabel.Position = UDim2.new(0, 60, 0, 36)
 subtitleLabel.BackgroundTransparency = 1
 subtitleLabel.Font = Enum.Font.Gotham
 subtitleLabel.Text = "Blox Fruit"
@@ -139,7 +145,7 @@ subtitleLabel.TextSize = 12
 subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 subtitleLabel.Parent = brandContainer
 
--- Ô Tìm Kiem (Search Bar)
+-- Ô Tìm Kiếm (Search Bar)
 local searchContainer = Instance.new("Frame")
 searchContainer.Size = UDim2.new(1, -32, 0, 36)
 searchContainer.Position = UDim2.new(0, 16, 0, 84)
@@ -344,7 +350,7 @@ local function createDropdown(parent, labelText, yPos)
     return container
 end
 
--- Helper: Tạo Nut Toggle
+-- Helper: Tạo Nút Toggle
 local function createToggle(parent, labelText, yPos, initialState)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -28, 0, 32)
@@ -539,4 +545,4 @@ hopBtn.TextSize = 13
 Instance.new("UICorner", hopBtn).CornerRadius = Theme.SmallCornerRadius
 Instance.new("UIStroke", hopBtn).Color = Theme.Border
 
-print("Cam Hub UI - Loaded với Asset ID Logo mới: 73919882310822!")
+print("Cam Hub UI - Logo đã được sửa lỗi hiển thị và căn chỉnh góc trên bên trái!")
