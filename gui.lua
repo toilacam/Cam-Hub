@@ -1,5 +1,5 @@
 --[================================================================[
-    CAM HUB UI - REBRANDED & SIDEBAR CLEANED
+    CAM HUB UI - INTEGRATED LOGO (Asset ID: 73919882310822)
     Self-Contained LocalScript Implementation
 --]================================================================]
 
@@ -10,7 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Remove existing instance if reloading
+-- Xóa giao diện cũ nếu đang tải lại
 if playerGui:FindFirstChild("CamHubGui") then
     playerGui.CamHubGui:Destroy()
 end
@@ -21,18 +21,18 @@ screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
--- Theme Configuration
+-- Cấu hình Theme giao diện
 local Theme = {
     Background = Color3.fromRGB(18, 18, 22),
     SidebarBackground = Color3.fromRGB(22, 22, 26),
     CardBackground = Color3.fromRGB(26, 26, 32),
     CardBackgroundHover = Color3.fromRGB(32, 32, 40),
     Border = Color3.fromRGB(45, 45, 55),
-    Accent = Color3.fromRGB(110, 140, 255),
+    Accent = Color3.fromRGB(255, 140, 30), -- Màu cam đồng bộ với logo
     TextPrimary = Color3.fromRGB(240, 240, 245),
     TextSecondary = Color3.fromRGB(140, 140, 155),
     ToggleOff = Color3.fromRGB(55, 55, 65),
-    ToggleOn = Color3.fromRGB(120, 150, 255),
+    ToggleOn = Color3.fromRGB(255, 140, 30),
     CornerRadius = UDim.new(0, 8),
     SmallCornerRadius = UDim.new(0, 6),
 }
@@ -58,7 +58,7 @@ mainStroke.Transparency = 0.5
 mainStroke.Thickness = 1
 mainStroke.Parent = mainWindow
 
--- Make Window Draggable
+-- Tính năng kéo/di chuyển cửa sổ (Window Dragging)
 local dragging, dragInput, dragStart, startPos
 mainWindow.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -101,19 +101,19 @@ sidebarStroke.Transparency = 0.6
 sidebarStroke.Thickness = 1
 sidebarStroke.Parent = sidebar
 
--- Header Area in Sidebar (Cam Hub Branding & Logo Image)
+-- Brand Container (Chứa Logo & Tên Cam Hub)
 local brandContainer = Instance.new("Frame")
 brandContainer.Size = UDim2.new(1, 0, 0, 70)
 brandContainer.BackgroundTransparency = 1
 brandContainer.Parent = sidebar
 
--- SUPPLIED LOGO IMAGE: Replace "rbxassetid://0000000000" with your uploaded decal asset ID
+-- LOGO CAM HUB VỚI ASSET ID MỚI
 local logoImage = Instance.new("ImageLabel")
-logoImage.Name = "LogoImage"
-logoImage.Size = UDim2.new(0, 28, 0, 28)
-logoImage.Position = UDim2.new(0, 16, 0, 21)
+logoImage.Name = "CamHubLogo"
+logoImage.Size = UDim2.new(0, 32, 0, 32)
+logoImage.Position = UDim2.new(0, 16, 0, 19)
 logoImage.BackgroundTransparency = 1
-logoImage.Image = "rbxassetid://0000000000" 
+logoImage.Image = "rbxassetid://73919882310822"
 logoImage.ScaleType = Enum.ScaleType.Fit
 logoImage.Parent = brandContainer
 
@@ -139,7 +139,7 @@ subtitleLabel.TextSize = 12
 subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 subtitleLabel.Parent = brandContainer
 
--- Search Input in Sidebar
+-- Ô Tìm Kiem (Search Bar)
 local searchContainer = Instance.new("Frame")
 searchContainer.Size = UDim2.new(1, -32, 0, 36)
 searchContainer.Position = UDim2.new(0, 16, 0, 84)
@@ -163,7 +163,7 @@ searchBox.TextSize = 13
 searchBox.TextXAlignment = Enum.TextXAlignment.Left
 searchBox.Parent = searchContainer
 
--- Sidebar Footer
+-- Footer Sidebar
 local sidebarFooter = Instance.new("Frame")
 sidebarFooter.Size = UDim2.new(1, 0, 0, 50)
 sidebarFooter.Position = UDim2.new(0, 0, 1, -50)
@@ -245,7 +245,7 @@ contentScroll.ScrollBarThickness = 4
 contentScroll.ScrollBarImageColor3 = Theme.Border
 contentScroll.Parent = mainWindow
 
--- Layout Columns
+-- Cột hiển thị nội dung
 local leftCol = Instance.new("Frame")
 leftCol.Size = UDim2.new(0, 290, 0, 680)
 leftCol.Position = UDim2.new(0, 20, 0, 10)
@@ -258,7 +258,7 @@ rightCol.Position = UDim2.new(0, 325, 0, 10)
 rightCol.BackgroundTransparency = 1
 rightCol.Parent = contentScroll
 
--- Helper: Create Card Container
+-- Helper: Tạo Khung Card
 local function createCard(parent, title, height)
     local card = Instance.new("Frame")
     card.Size = UDim2.new(1, 0, 0, height)
@@ -309,7 +309,7 @@ local function createCard(parent, title, height)
     return card
 end
 
--- Helper: Create Dropdown Component
+-- Helper: Tạo Dropdown
 local function createDropdown(parent, labelText, yPos)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -28, 0, 36)
@@ -344,7 +344,7 @@ local function createDropdown(parent, labelText, yPos)
     return container
 end
 
--- Helper: Create Toggle Component
+-- Helper: Tạo Nut Toggle
 local function createToggle(parent, labelText, yPos, initialState)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -28, 0, 32)
@@ -390,7 +390,7 @@ local function createToggle(parent, labelText, yPos, initialState)
     return container
 end
 
--- Helper: Create Slider Component
+-- Helper: Tạo Thanh Trượt Slider
 local function createSlider(parent, labelText, yPos, min, max, default)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -28, 0, 48)
@@ -520,7 +520,8 @@ bossStatus.BackgroundTransparency = 1
 bossStatus.Font = Enum.Font.Gotham
 bossStatus.Text = "• Off"
 bossStatus.TextColor3 = Theme.TextSecondary
-bossStatus.TextSize, bossStatus.TextXAlignment = 11, Enum.TextXAlignment.Left
+bossStatus.TextSize = 11
+bossStatus.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Teleport Card
 local tpCard = createCard(rightCol, "World Teleport", 90)
@@ -538,4 +539,4 @@ hopBtn.TextSize = 13
 Instance.new("UICorner", hopBtn).CornerRadius = Theme.SmallCornerRadius
 Instance.new("UIStroke", hopBtn).Color = Theme.Border
 
-print("Cam Hub UI successfully loaded with Rebranded Logo & Cleaned Sidebar!")
+print("Cam Hub UI - Loaded với Asset ID Logo mới: 73919882310822!")
