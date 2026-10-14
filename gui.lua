@@ -1,548 +1,385 @@
---[================================================================[
-    CAM HUB UI - FIXED LOGO DISPLAY & TOP-LEFT ALIGNMENT
-    Self-Contained LocalScript Implementation
---]================================================================]
+-- CamHub.client.lua
+-- Place in: StarterPlayer > StarterPlayerScripts
+-- Builds the whole "Cam Hub" GUI from code. Native Roblox GUI objects only.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local nguoichoi = Players.LocalPlayer
+local pgui = nguoichoi:WaitForChild("PlayerGui")
 
--- Xóa giao diện cũ nếu đang tải lại
-if playerGui:FindFirstChild("CamHubGui") then
-    playerGui.CamHubGui:Destroy()
-end
+---------------------------------------------------------------------
+-- Config / design tokens
+---------------------------------------------------------------------
+local CH = {
+	ten = "Cam Hub",
+	phu = "Nothing here yet. This space is ready for what comes next.",
+	cuasoMax = Vector2.new(892, 700),
+	cuasoTile = 0.9, -- fraction of the viewport the window may fill
+	benRong = 0.303, -- sidebar width (270 / 892)
+	benThu = 0.085, -- collapsed sidebar width (~76 px)
+	nguongThu = 600, -- auto-collapse below this viewport width
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "CamHubGui"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.Parent = playerGui
+	mauNen = Color3.fromRGB(24, 22, 20),
+	mauBen = Color3.fromRGB(32, 31, 30),
+	mauKinh = Color3.fromRGB(44, 43, 42),
+	mauChu = Color3.fromRGB(242, 241, 238),
+	mauChu2 = Color3.fromRGB(143, 141, 137),
+	mauVien = Color3.fromRGB(255, 255, 255),
 
--- Cấu hình Theme giao diện
-local Theme = {
-    Background = Color3.fromRGB(18, 18, 22),
-    SidebarBackground = Color3.fromRGB(22, 22, 26),
-    CardBackground = Color3.fromRGB(26, 26, 32),
-    CardBackgroundHover = Color3.fromRGB(32, 32, 40),
-    Border = Color3.fromRGB(45, 45, 55),
-    Accent = Color3.fromRGB(255, 140, 30), -- Màu cam đồng bộ với logo
-    TextPrimary = Color3.fromRGB(240, 240, 245),
-    TextSecondary = Color3.fromRGB(140, 140, 155),
-    ToggleOff = Color3.fromRGB(55, 55, 65),
-    ToggleOn = Color3.fromRGB(255, 140, 30),
-    CornerRadius = UDim.new(0, 8),
-    SmallCornerRadius = UDim.new(0, 6),
+	trongNen = 0.12,
+	trongBen = 0.35,
+	trongKinh = 0.5,
+	trongVien = 0.9,
+	trongVienHi = 0.8,
+	trongBong = 0.93,
+
+	goc = { cuaso = 20, panel = 20, ctl = 12, icon = 10 },
+	le = { nd = UDim.new(0, 22), ndPhai = UDim.new(0, 26) },
+	tg = 0.2, -- tween seconds
+	font = Enum.Font.Gotham,
+	fontDam = Enum.Font.GothamBold,
+	fontVua = Enum.Font.GothamMedium,
 }
 
--- Main Window Frame
-local mainWindow = Instance.new("Frame")
-mainWindow.Name = "MainWindow"
-mainWindow.Size = UDim2.new(0, 884, 0, 700)
-mainWindow.Position = UDim2.new(0.5, -442, 0.5, -350)
-mainWindow.BackgroundColor3 = Theme.Background
-mainWindow.BackgroundTransparency = 0.1
-mainWindow.BorderSizePixel = 0
-mainWindow.ClipsDescendants = true
-mainWindow.Parent = screenGui
-
-local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = Theme.CornerRadius
-mainCorner.Parent = mainWindow
-
-local mainStroke = Instance.new("UIStroke")
-mainStroke.Color = Theme.Border
-mainStroke.Transparency = 0.5
-mainStroke.Thickness = 1
-mainStroke.Parent = mainWindow
-
--- Kéo / Di chuyển cửa sổ
-local dragging, dragInput, dragStart, startPos
-mainWindow.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainWindow.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-mainWindow.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        mainWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
--- ==================== SIDEBAR ====================
-local sidebar = Instance.new("Frame")
-sidebar.Name = "Sidebar"
-sidebar.Size = UDim2.new(0, 260, 1, 0)
-sidebar.BackgroundColor3 = Theme.SidebarBackground
-sidebar.BackgroundTransparency = 0.2
-sidebar.BorderSizePixel = 0
-sidebar.Parent = mainWindow
-
-local sidebarStroke = Instance.new("UIStroke")
-sidebarStroke.Color = Theme.Border
-sidebarStroke.Transparency = 0.6
-sidebarStroke.Thickness = 1
-sidebarStroke.Parent = sidebar
-
--- Brand Container (Khung chứa Logo & Text ở góc trên bên trái)
-local brandContainer = Instance.new("Frame")
-brandContainer.Name = "BrandContainer"
-brandContainer.Size = UDim2.new(1, 0, 0, 70)
-brandContainer.BackgroundTransparency = 1
-brandContainer.Parent = sidebar
-
--- LOGO CAM HUB (ĐÃ FIX ĐƯỜNG DẪN MỚI & ĐẶT VÀO GÓC TRÊN CÙNG BÊN TRÁI)
-local logoImage = Instance.new("ImageLabel")
-logoImage.Name = "CamHubLogo"
-logoImage.Size = UDim2.new(0, 36, 0, 36)
-logoImage.Position = UDim2.new(0, 16, 0, 16)
-logoImage.BackgroundTransparency = 1
-logoImage.Image = "http://www.roblox.com/asset/?id=73919882310822"
-logoImage.ScaleType = Enum.ScaleType.Fit
-logoImage.ZIndex = 5
-logoImage.Parent = brandContainer
-
--- Tên "Cam Hub" được đẩy sang phải để không bị chèn lên Logo
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "TitleLabel"
-titleLabel.Size = UDim2.new(0, 150, 0, 20)
-titleLabel.Position = UDim2.new(0, 60, 0, 16)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.Text = "Cam Hub"
-titleLabel.TextColor3 = Theme.TextPrimary
-titleLabel.TextSize = 16
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-titleLabel.Parent = brandContainer
-
--- Subtitle "Blox Fruit"
-local subtitleLabel = Instance.new("TextLabel")
-subtitleLabel.Name = "SubtitleLabel"
-subtitleLabel.Size = UDim2.new(0, 150, 0, 16)
-subtitleLabel.Position = UDim2.new(0, 60, 0, 36)
-subtitleLabel.BackgroundTransparency = 1
-subtitleLabel.Font = Enum.Font.Gotham
-subtitleLabel.Text = "Blox Fruit"
-subtitleLabel.TextColor3 = Theme.TextSecondary
-subtitleLabel.TextSize = 12
-subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-subtitleLabel.Parent = brandContainer
-
--- Ô Tìm Kiếm (Search Bar)
-local searchContainer = Instance.new("Frame")
-searchContainer.Size = UDim2.new(1, -32, 0, 36)
-searchContainer.Position = UDim2.new(0, 16, 0, 84)
-searchContainer.BackgroundColor3 = Theme.CardBackground
-searchContainer.BorderSizePixel = 0
-searchContainer.Parent = sidebar
-Instance.new("UICorner", searchContainer).CornerRadius = Theme.SmallCornerRadius
-local searchStroke = Instance.new("UIStroke", searchContainer)
-searchStroke.Color = Theme.Border
-
-local searchBox = Instance.new("TextBox")
-searchBox.Size = UDim2.new(1, -32, 1, 0)
-searchBox.Position = UDim2.new(0, 32, 0, 0)
-searchBox.BackgroundTransparency = 1
-searchBox.Font = Enum.Font.Gotham
-searchBox.PlaceholderText = "Search"
-searchBox.PlaceholderColor3 = Theme.TextSecondary
-searchBox.Text = ""
-searchBox.TextColor3 = Theme.TextPrimary
-searchBox.TextSize = 13
-searchBox.TextXAlignment = Enum.TextXAlignment.Left
-searchBox.Parent = searchContainer
-
--- Footer Sidebar
-local sidebarFooter = Instance.new("Frame")
-sidebarFooter.Size = UDim2.new(1, 0, 0, 50)
-sidebarFooter.Position = UDim2.new(0, 0, 1, -50)
-sidebarFooter.BackgroundTransparency = 1
-sidebarFooter.Parent = sidebar
-
-local footerText = Instance.new("TextLabel")
-footerText.Size = UDim2.new(0, 150, 1, 0)
-footerText.Position = UDim2.new(0, 16, 0, 0)
-footerText.BackgroundTransparency = 1
-footerText.Font = Enum.Font.Gotham
-footerText.Text = "camhub.gg"
-footerText.TextColor3 = Theme.TextSecondary
-footerText.TextSize = 12
-footerText.TextXAlignment = Enum.TextXAlignment.Left
-footerText.Parent = sidebarFooter
-
-local lctrlBadge = Instance.new("Frame")
-lctrlBadge.Size = UDim2.new(0, 42, 0, 24)
-lctrlBadge.Position = UDim2.new(1, -58, 0.5, -12)
-lctrlBadge.BackgroundColor3 = Theme.CardBackground
-lctrlBadge.BorderSizePixel = 0
-lctrlBadge.Parent = sidebarFooter
-Instance.new("UICorner", lctrlBadge).CornerRadius = UDim.new(0, 4)
-local lctrlStroke = Instance.new("UIStroke", lctrlBadge)
-lctrlStroke.Color = Theme.Border
-
-local lctrlText = Instance.new("TextLabel")
-lctrlText.Size = UDim2.new(1, 0, 1, 0)
-lctrlText.BackgroundTransparency = 1
-lctrlText.Font = Enum.Font.GothamBold
-lctrlText.Text = "LCtrl"
-lctrlText.TextColor3 = Theme.TextSecondary
-lctrlText.TextSize = 11
-lctrlText.Parent = lctrlBadge
-
--- ==================== MAIN CONTENT HEADER ====================
-local topHeader = Instance.new("Frame")
-topHeader.Size = UDim2.new(1, -260, 0, 70)
-topHeader.Position = UDim2.new(0, 260, 0, 0)
-topHeader.BackgroundTransparency = 1
-topHeader.Parent = mainWindow
-
-local pageTitle = Instance.new("TextLabel")
-pageTitle.Size = UDim2.new(0, 200, 1, 0)
-pageTitle.Position = UDim2.new(0, 24, 0, 0)
-pageTitle.BackgroundTransparency = 1
-pageTitle.Font = Enum.Font.GothamBold
-pageTitle.Text = "Blox Fruit"
-pageTitle.TextColor3 = Theme.TextPrimary
-pageTitle.TextSize = 20
-pageTitle.TextXAlignment = Enum.TextXAlignment.Left
-pageTitle.Parent = topHeader
-
-local closeButton = Instance.new("ImageButton")
-closeButton.Size = UDim2.new(0, 32, 0, 32)
-closeButton.Position = UDim2.new(1, -48, 0.5, -16)
-closeButton.BackgroundColor3 = Theme.CardBackground
-closeButton.BorderSizePixel = 0
-closeButton.Image = "rbxassetid://6031094678"
-closeButton.ImageColor3 = Theme.TextSecondary
-closeButton.Parent = topHeader
-Instance.new("UICorner", closeButton).CornerRadius = UDim.new(0, 6)
-local closeStroke = Instance.new("UIStroke", closeButton)
-closeStroke.Color = Theme.Border
-
-closeButton.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-end)
-
--- ==================== CONTENT SCROLLER ====================
-local contentScroll = Instance.new("ScrollingFrame")
-contentScroll.Size = UDim2.new(1, -260, 1, -70)
-contentScroll.Position = UDim2.new(0, 260, 0, 70)
-contentScroll.BackgroundTransparency = 1
-contentScroll.BorderSizePixel = 0
-contentScroll.CanvasSize = UDim2.new(0, 0, 0, 750)
-contentScroll.ScrollBarThickness = 4
-contentScroll.ScrollBarImageColor3 = Theme.Border
-contentScroll.Parent = mainWindow
-
--- Cột hiển thị nội dung
-local leftCol = Instance.new("Frame")
-leftCol.Size = UDim2.new(0, 290, 0, 680)
-leftCol.Position = UDim2.new(0, 20, 0, 10)
-leftCol.BackgroundTransparency = 1
-leftCol.Parent = contentScroll
-
-local rightCol = Instance.new("Frame")
-rightCol.Size = UDim2.new(0, 290, 0, 680)
-rightCol.Position = UDim2.new(0, 325, 0, 10)
-rightCol.BackgroundTransparency = 1
-rightCol.Parent = contentScroll
-
--- Helper: Tạo Khung Card
-local function createCard(parent, title, height)
-    local card = Instance.new("Frame")
-    card.Size = UDim2.new(1, 0, 0, height)
-    card.BackgroundColor3 = Theme.CardBackground
-    card.BackgroundTransparency = 0.4
-    card.BorderSizePixel = 0
-    card.Parent = parent
-    
-    Instance.new("UICorner", card).CornerRadius = Theme.CornerRadius
-    local stroke = Instance.new("UIStroke", card)
-    stroke.Color = Theme.Border
-    stroke.Transparency = 0.6
-    
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 44)
-    header.BackgroundTransparency = 1
-    header.Parent = card
-    
-    local icon = Instance.new("Frame")
-    icon.Size = UDim2.new(0, 20, 0, 20)
-    icon.Position = UDim2.new(0, 14, 0.5, -10)
-    icon.BackgroundColor3 = Theme.Accent
-    icon.BackgroundTransparency = 0.3
-    icon.Parent = header
-    Instance.new("UICorner", icon).CornerRadius = UDim.new(0, 4)
-    
-    local titleLbl = Instance.new("TextLabel")
-    titleLbl.Size = UDim2.new(1, -70, 1, 0)
-    titleLbl.Position = UDim2.new(0, 44, 0, 0)
-    titleLbl.BackgroundTransparency = 1
-    titleLbl.Font = Enum.Font.GothamBold
-    titleLbl.Text = title
-    titleLbl.TextColor3 = Theme.TextPrimary
-    titleLbl.TextSize = 14
-    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-    titleLbl.Parent = header
-    
-    local chevron = Instance.new("TextLabel")
-    chevron.Size = UDim2.new(0, 20, 0, 20)
-    chevron.Position = UDim2.new(1, -30, 0.5, -10)
-    chevron.BackgroundTransparency = 1
-    chevron.Font = Enum.Font.GothamBold
-    chevron.Text = "v"
-    chevron.TextColor3 = Theme.TextSecondary
-    chevron.TextSize = 12
-    chevron.Parent = header
-    
-    return card
+---------------------------------------------------------------------
+-- Helpers
+---------------------------------------------------------------------
+local function tao(lop: string, thuoctinh: { [string]: any }, cha: Instance?): any
+	local o = Instance.new(lop)
+	for k, v in pairs(thuoctinh) do
+		(o :: any)[k] = v
+	end
+	if cha then
+		o.Parent = cha
+	end
+	return o
 end
 
--- Helper: Tạo Dropdown
-local function createDropdown(parent, labelText, yPos)
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -28, 0, 36)
-    container.Position = UDim2.new(0, 14, 0, yPos)
-    container.BackgroundTransparency = 1
-    container.Parent = parent
-    
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0, 120, 1, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.Text = labelText
-    lbl.TextColor3 = Theme.TextPrimary
-    lbl.TextSize = 13
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = container
-    
-    local dropdownBtn = Instance.new("TextButton")
-    dropdownBtn.Size = UDim2.new(0, 115, 0, 30)
-    dropdownBtn.Position = UDim2.new(1, -115, 0.5, -15)
-    dropdownBtn.BackgroundColor3 = Theme.Background
-    dropdownBtn.AutoButtonColor = false
-    dropdownBtn.Font = Enum.Font.GothamMedium
-    dropdownBtn.Text = "None   v"
-    dropdownBtn.TextColor3 = Theme.TextSecondary
-    dropdownBtn.TextSize = 12
-    dropdownBtn.Parent = container
-    Instance.new("UICorner", dropdownBtn).CornerRadius = Theme.SmallCornerRadius
-    local stroke = Instance.new("UIStroke", dropdownBtn)
-    stroke.Color = Theme.Border
-    
-    return container
+local function tweenTo(o: Instance, thuoctinh: { [string]: any })
+	local tw = TweenService:Create(o, TweenInfo.new(CH.tg, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), thuoctinh)
+	tw:Play()
+	return tw
 end
 
--- Helper: Tạo Nút Toggle
-local function createToggle(parent, labelText, yPos, initialState)
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -28, 0, 32)
-    container.Position = UDim2.new(0, 14, 0, yPos)
-    container.BackgroundTransparency = 1
-    container.Parent = parent
-    
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -60, 1, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.Text = labelText
-    lbl.TextColor3 = Theme.TextPrimary
-    lbl.TextSize = 13
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = container
-    
-    local toggleBg = Instance.new("TextButton")
-    toggleBg.Size = UDim2.new(0, 40, 0, 22)
-    toggleBg.Position = UDim2.new(1, -40, 0.5, -11)
-    toggleBg.BackgroundColor3 = initialState and Theme.ToggleOn or Theme.ToggleOff
-    toggleBg.AutoButtonColor = false
-    toggleBg.Text = ""
-    toggleBg.Parent = container
-    Instance.new("UICorner", toggleBg).CornerRadius = UDim.new(1, 0)
-    
-    local toggleCircle = Instance.new("Frame")
-    toggleCircle.Size = UDim2.new(0, 18, 0, 18)
-    toggleCircle.Position = initialState and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
-    toggleCircle.BackgroundColor3 = Theme.TextPrimary
-    toggleCircle.Parent = toggleBg
-    Instance.new("UICorner", toggleCircle).CornerRadius = UDim.new(1, 0)
-    
-    local active = initialState
-    toggleBg.MouseButton1Click:Connect(function()
-        active = not active
-        local targetPos = active and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
-        local targetColor = active and Theme.ToggleOn or Theme.ToggleOff
-        TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = targetPos}):Play()
-        TweenService:Create(toggleBg, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-    end)
-    
-    return container
+local function goc(cha: Instance, r: number)
+	return tao("UICorner", { CornerRadius = UDim.new(0, r) }, cha)
 end
 
--- Helper: Tạo Thanh Trượt Slider
-local function createSlider(parent, labelText, yPos, min, max, default)
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -28, 0, 48)
-    container.Position = UDim2.new(0, 14, 0, yPos)
-    container.BackgroundTransparency = 1
-    container.Parent = parent
-    
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -60, 0, 20)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.Text = labelText
-    lbl.TextColor3 = Theme.TextPrimary
-    lbl.TextSize = 13
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = container
-    
-    local valLbl = Instance.new("TextLabel")
-    valLbl.Size = UDim2.new(0, 50, 0, 20)
-    valLbl.Position = UDim2.new(1, -50, 0, 0)
-    valLbl.BackgroundTransparency = 1
-    valLbl.Font = Enum.Font.GothamMedium
-    valLbl.Text = tostring(default) .. "%"
-    valLbl.TextColor3 = Theme.TextSecondary
-    valLbl.TextSize = 12
-    valLbl.TextXAlignment = Enum.TextXAlignment.Right
-    valLbl.Parent = container
-    
-    local sliderBg = Instance.new("Frame")
-    sliderBg.Size = UDim2.new(1, 0, 0, 6)
-    sliderBg.Position = UDim2.new(0, 0, 0, 30)
-    sliderBg.BackgroundColor3 = Theme.ToggleOff
-    sliderBg.BorderSizePixel = 0
-    sliderBg.Parent = container
-    Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
-    
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new((default - min)/(max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Theme.Accent
-    fill.BorderSizePixel = 0
-    fill.Parent = sliderBg
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-    
-    local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 14, 0, 14)
-    knob.Position = UDim2.new(1, -7, 0.5, -7)
-    knob.BackgroundColor3 = Theme.TextPrimary
-    knob.Parent = fill
-    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-    
-    return container
+-- Border: bright at the top edge, fading toward the bottom (layered border feel)
+local function vien(cha: Instance, trong: number)
+	local s = tao("UIStroke", {
+		Color = CH.mauVien,
+		Transparency = trong,
+		Thickness = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	}, cha)
+	tao("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.35, 0.55),
+			NumberSequenceKeypoint.new(1, 0.8),
+		}),
+	}, s)
+	return s
 end
 
--- ==================== POPULATE LEFT CARD (Auto Farm) ====================
-local autoFarmCard = createCard(leftCol, "Auto Farm", 480)
-createDropdown(autoFarmCard, "Quest", 52)
-createDropdown(autoFarmCard, "Weapon", 96)
-createDropdown(autoFarmCard, "Method", 140)
-createDropdown(autoFarmCard, "Target...", 184)
-createToggle(autoFarmCard, "Auto Farm Level", 230, false)
+-- Soft top sheen layered over a surface
+local function anhsang(cha: Instance, r: number, cuong: number)
+	local f = tao("Frame", {
+		Name = "Sheen",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0,
+		BorderSizePixel = 0,
+		Active = false,
+		ZIndex = cha.ZIndex,
+	}, cha)
+	goc(f, r)
+	tao("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1 - cuong),
+			NumberSequenceKeypoint.new(0.3, 1),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+	}, f)
+	return f
+end
 
-local keyContainer = Instance.new("Frame", autoFarmCard)
-keyContainer.Size = UDim2.new(1, -28, 0, 32)
-keyContainer.Position = UDim2.new(0, 14, 0, 270)
-keyContainer.BackgroundTransparency = 1
-local keyLbl = Instance.new("TextLabel", keyContainer)
-keyLbl.Size = UDim2.new(1, -60, 1, 0)
-keyLbl.BackgroundTransparency = 1
-keyLbl.Font = Enum.Font.GothamMedium
-keyLbl.Text = "Farm toggle key"
-keyLbl.TextColor3 = Theme.TextPrimary
-keyLbl.TextSize = 13
-keyLbl.TextXAlignment = Enum.TextXAlignment.Left
+local function kinh(cha: Instance, props: { [string]: any }, r: number, mau: Color3, trong: number)
+	props.BackgroundColor3 = mau
+	props.BackgroundTransparency = trong
+	props.BorderSizePixel = 0
+	local f = tao("Frame", props, cha)
+	goc(f, r)
+	vien(f, CH.trongVien)
+	anhsang(f, r, 0.06)
+	return f
+end
 
-local keyBtn = Instance.new("TextButton", keyContainer)
-keyBtn.Size = UDim2.new(0, 50, 0, 24)
-keyBtn.Position = UDim2.new(1, -50, 0.5, -12)
-keyBtn.BackgroundColor3 = Theme.Background
-keyBtn.AutoButtonColor = false
-keyBtn.Font = Enum.Font.GothamMedium
-keyBtn.Text = "—"
-keyBtn.TextColor3 = Theme.TextSecondary
-keyBtn.TextSize = 12
-Instance.new("UICorner", keyBtn).CornerRadius = Theme.SmallCornerRadius
-Instance.new("UIStroke", keyBtn).Color = Theme.Border
+local function nhan(cha: Instance, props: { [string]: any }): TextLabel
+	props.BackgroundTransparency = 1
+	props.TextColor3 = props.TextColor3 or CH.mauChu
+	props.Font = props.Font or CH.font
+	props.TextXAlignment = props.TextXAlignment or Enum.TextXAlignment.Left
+	return tao("TextLabel", props, cha)
+end
 
-createToggle(autoFarmCard, "Fast Attack", 310, false)
-createToggle(autoFarmCard, "Bring Mobs", 350, true)
-createSlider(autoFarmCard, "Attack Delay", 390, 0, 100, 20)
-createToggle(autoFarmCard, "Auto Haki", 440, false)
+---------------------------------------------------------------------
+-- Build GUI (never duplicate)
+---------------------------------------------------------------------
+local cu = pgui:FindFirstChild("CamHubGui")
+if cu then
+	cu:Destroy()
+end
 
--- ==================== POPULATE RIGHT CARDS ====================
--- Stats Card
-local statsCard = createCard(rightCol, "Stats Upgrade", 280)
-local statsInfo = Instance.new("TextLabel", statsCard)
-statsInfo.Size = UDim2.new(1, -28, 0, 36)
-statsInfo.Position = UDim2.new(0, 14, 0, 48)
-statsInfo.BackgroundTransparency = 1
-statsInfo.Font = Enum.Font.Gotham
-statsInfo.Text = "Level: 2550 | Points: 0\nSelected: Melee"
-statsInfo.TextColor3 = Theme.TextSecondary
-statsInfo.TextSize = 12
-statsInfo.TextXAlignment = Enum.TextXAlignment.Left
+local gui = tao("ScreenGui", {
+	Name = "CamHubGui",
+	ResetOnSpawn = false,
+	IgnoreGuiInset = true,
+	DisplayOrder = 10,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, pgui)
 
-createToggle(statsCard, "Auto Stats Melee", 92, false)
-createToggle(statsCard, "Auto Stats Defense", 132, false)
-createToggle(statsCard, "Auto Stats Sword", 172, false)
+-- Root keeps the 892:700 shape and never exceeds the viewport
+local root = tao("Frame", {
+	Name = "Root",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromScale(CH.cuasoTile, CH.cuasoTile),
+	BackgroundTransparency = 1,
+}, gui)
+tao("UIAspectRatioConstraint", { AspectRatio = CH.cuasoMax.X / CH.cuasoMax.Y }, root)
+tao("UISizeConstraint", { MaxSize = CH.cuasoMax }, root)
 
-local statusLbl = Instance.new("TextLabel", statsCard)
-statusLbl.Size = UDim2.new(1, -28, 0, 30)
-statusLbl.Position = UDim2.new(0, 14, 0, 214)
-statusLbl.BackgroundTransparency = 1
-statusLbl.Font = Enum.Font.Gotham
-statusLbl.Text = "• Off\nBeli: 14.5M | Fragments: 25.4K"
-statusLbl.TextColor3 = Theme.TextSecondary
-statusLbl.TextSize = 11
-statusLbl.TextXAlignment = Enum.TextXAlignment.Left
+-- Layered ambient shadow (stacked, increasingly faint frames)
+for i = 1, 4 do
+	local bong = tao("Frame", {
+		Name = "Shadow" .. i,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 6 + i * 2),
+		Size = UDim2.new(1, i * 8, 1, i * 8),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = CH.trongBong + (i - 1) * 0.015,
+		BorderSizePixel = 0,
+		ZIndex = 0,
+	}, root)
+	goc(bong, CH.goc.cuaso + i * 4)
+end
 
--- Bosses Card
-local bossCard = createCard(rightCol, "Boss Farm", 110)
-bossCard.Position = UDim2.new(0, 0, 0, 295)
-createToggle(bossCard, "Auto Select Boss", 48, false)
-local bossStatus = Instance.new("TextLabel", bossCard)
-bossStatus.Size = UDim2.new(1, -28, 0, 20)
-bossStatus.Position = UDim2.new(0, 14, 0, 82)
-bossStatus.BackgroundTransparency = 1
-bossStatus.Font = Enum.Font.Gotham
-bossStatus.Text = "• Off"
-bossStatus.TextColor3 = Theme.TextSecondary
-bossStatus.TextSize = 11
-bossStatus.TextXAlignment = Enum.TextXAlignment.Left
+local cuaso = tao("Frame", {
+	Name = "MainWindow",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = CH.mauNen,
+	BackgroundTransparency = CH.trongNen,
+	BorderSizePixel = 0,
+	ClipsDescendants = true,
+	ZIndex = 1,
+}, root)
+goc(cuaso, CH.goc.cuaso)
+tao("UIGradient", {
+	Rotation = 90,
+	Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 196, 190)),
+}, cuaso)
+vien(cuaso, CH.trongVien - 0.04)
+anhsang(cuaso, CH.goc.cuaso, 0.07)
 
--- Teleport Card
-local tpCard = createCard(rightCol, "World Teleport", 90)
-tpCard.Position = UDim2.new(0, 0, 0, 418)
+-- Sidebar ------------------------------------------------------------
+local ben = tao("Frame", {
+	Name = "Sidebar",
+	Size = UDim2.fromScale(CH.benRong, 1),
+	BackgroundColor3 = CH.mauBen,
+	BackgroundTransparency = CH.trongBen,
+	BorderSizePixel = 0,
+	ClipsDescendants = true,
+	ZIndex = 2,
+}, cuaso)
+tao("UIGradient", {
+	Rotation = 90,
+	Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(210, 208, 205)),
+}, ben)
 
-local hopBtn = Instance.new("TextButton", tpCard)
-hopBtn.Size = UDim2.new(1, -28, 0, 32)
-hopBtn.Position = UDim2.new(0, 14, 0, 46)
-hopBtn.BackgroundColor3 = Theme.Background
-hopBtn.AutoButtonColor = false
-hopBtn.Font = Enum.Font.GothamBold
-hopBtn.Text = "Teleport Sea 3"
-hopBtn.TextColor3 = Theme.TextPrimary
-hopBtn.TextSize = 13
-Instance.new("UICorner", hopBtn).CornerRadius = Theme.SmallCornerRadius
-Instance.new("UIStroke", hopBtn).Color = Theme.Border
+tao("Frame", { -- vertical divider
+	Name = "Divider",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.fromScale(1, 0),
+	Size = UDim2.new(0, 1, 1, 0),
+	BackgroundColor3 = CH.mauVien,
+	BackgroundTransparency = CH.trongVien + 0.02,
+	BorderSizePixel = 0,
+	ZIndex = 3,
+}, ben)
 
-print("Cam Hub UI - Logo đã được sửa lỗi hiển thị và căn chỉnh góc trên bên trái!")
+local dau = tao("Frame", {
+	Name = "Header",
+	Position = UDim2.new(0, 14, 0, 16),
+	Size = UDim2.new(1, -28, 0, 44),
+	BackgroundTransparency = 1,
+	ZIndex = 3,
+}, ben)
+
+local tenhieu = nhan(dau, {
+	Name = "BrandText",
+	Text = CH.ten,
+	Size = UDim2.new(1, -50, 1, 0),
+	Position = UDim2.fromOffset(6, 0),
+	TextSize = 20,
+	Font = CH.fontDam,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+	ZIndex = 3,
+})
+
+local nutthu = tao("TextButton", {
+	Name = "CollapseButton",
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.fromScale(1, 0.5),
+	Size = UDim2.fromOffset(38, 38),
+	BackgroundColor3 = CH.mauVien,
+	BackgroundTransparency = 0.93,
+	AutoButtonColor = false,
+	Text = "",
+	ZIndex = 4,
+}, dau)
+goc(nutthu, CH.goc.icon)
+local vienNut = tao("UIStroke", {
+	Color = CH.mauVien,
+	Transparency = CH.trongVien,
+	Thickness = 1,
+	ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+}, nutthu)
+local bieutuong = nhan(nutthu, { -- text glyph avoids needing any image asset
+	Name = "Icon",
+	Text = "‹",
+	Size = UDim2.fromScale(1, 1),
+	TextSize = 26,
+	TextColor3 = CH.mauChu2,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Font = CH.fontVua,
+	ZIndex = 5,
+})
+
+-- Content ------------------------------------------------------------
+local noidung = tao("Frame", {
+	Name = "ContentArea",
+	Position = UDim2.fromScale(CH.benRong, 0),
+	Size = UDim2.fromScale(1 - CH.benRong, 1),
+	BackgroundTransparency = 1,
+	ClipsDescendants = true,
+	ZIndex = 2,
+}, cuaso)
+tao("UIPadding", {
+	PaddingTop = CH.le.nd,
+	PaddingBottom = CH.le.ndPhai,
+	PaddingLeft = CH.le.ndPhai,
+	PaddingRight = CH.le.ndPhai,
+}, noidung)
+
+nhan(noidung, {
+	Name = "Heading",
+	Text = CH.ten,
+	Size = UDim2.new(1, 0, 0, 40),
+	TextSize = 26,
+	Font = CH.fontDam,
+	ZIndex = 3,
+})
+tao("Frame", {
+	Name = "HeadingDivider",
+	Position = UDim2.fromOffset(0, 52),
+	Size = UDim2.new(1, 0, 0, 1),
+	BackgroundColor3 = CH.mauVien,
+	BackgroundTransparency = CH.trongVien,
+	BorderSizePixel = 0,
+	ZIndex = 3,
+}, noidung)
+
+local trangchu = kinh(noidung, {
+	Name = "HomePanel",
+	Position = UDim2.fromOffset(0, 72),
+	Size = UDim2.new(1, 0, 1, -72),
+	ZIndex = 3,
+}, CH.goc.panel, CH.mauKinh, CH.trongKinh)
+
+local khoichu = tao("Frame", {
+	Name = "Text",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.8, 0, 0, 70),
+	BackgroundTransparency = 1,
+	ZIndex = 5,
+}, trangchu)
+tao("UIListLayout", {
+	FillDirection = Enum.FillDirection.Vertical,
+	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	VerticalAlignment = Enum.VerticalAlignment.Center,
+	SortOrder = Enum.SortOrder.LayoutOrder,
+	Padding = UDim.new(0, 6),
+}, khoichu)
+nhan(khoichu, {
+	Text = "Welcome to Cam Hub",
+	Size = UDim2.new(1, 0, 0, 28),
+	TextSize = 22,
+	Font = CH.fontVua,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	LayoutOrder = 1,
+	ZIndex = 5,
+})
+nhan(khoichu, {
+	Text = CH.phu,
+	Size = UDim2.new(1, 0, 0, 36),
+	TextSize = 14,
+	TextColor3 = CH.mauChu2,
+	TextWrapped = true,
+	TextYAlignment = Enum.TextYAlignment.Top,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	LayoutOrder = 2,
+	ZIndex = 5,
+})
+
+---------------------------------------------------------------------
+-- Interaction
+---------------------------------------------------------------------
+local dathu = false
+
+local function datThu(thu: boolean)
+	if dathu == thu then
+		return
+	end
+	dathu = thu
+	local rong = thu and CH.benThu or CH.benRong
+	tweenTo(ben, { Size = UDim2.fromScale(rong, 1) })
+	tweenTo(noidung, { Position = UDim2.fromScale(rong, 0), Size = UDim2.fromScale(1 - rong, 1) })
+	tweenTo(tenhieu, { TextTransparency = thu and 1 or 0 })
+	bieutuong.Text = thu and "›" or "‹"
+end
+
+nutthu.Activated:Connect(function()
+	datThu(not dathu)
+end)
+
+nutthu.MouseEnter:Connect(function()
+	tweenTo(nutthu, { BackgroundTransparency = 0.88 })
+	tweenTo(vienNut, { Transparency = CH.trongVienHi })
+	tweenTo(bieutuong, { TextColor3 = CH.mauChu })
+end)
+nutthu.MouseLeave:Connect(function()
+	tweenTo(nutthu, { BackgroundTransparency = 0.93 })
+	tweenTo(vienNut, { Transparency = CH.trongVien })
+	tweenTo(bieutuong, { TextColor3 = CH.mauChu2 })
+end)
+
+-- Auto-collapse on narrow viewports (single connection, cleaned up with the GUI)
+local cam = workspace.CurrentCamera
+local function kiemtra()
+	if cam and cam.ViewportSize.X < CH.nguongThu then
+		datThu(true)
+	end
+end
+if cam then
+	local kn = cam:GetPropertyChangedSignal("ViewportSize"):Connect(kiemtra)
+	gui.Destroying:Connect(function()
+		kn:Disconnect()
+	end)
+end
+kiemtra()
