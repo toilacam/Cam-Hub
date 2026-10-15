@@ -1,4 +1,4 @@
--- CamHub.client.lua  (Update #2)
+-- CamHub.client.lua  (Update #3: exact Lucide PNG icons)
 -- Place in: StarterPlayer > StarterPlayerScripts   (delete any older Cam Hub script first)
 -- Adds: Lucide-style icon system, 5-section sidebar navigation with pages.
 -- Keeps: logo, subtitle, close/reopen, four-corner resize, collapse, glass style.
@@ -11,19 +11,21 @@ local nguoichoi = Players.LocalPlayer
 local pgui = nguoichoi:WaitForChild("PlayerGui")
 
 ---------------------------------------------------------------------
--- Icon assets (CENTRALIZED). Paste your uploaded Roblox image IDs here,
--- e.g. x = "rbxassetid://123456789". Empty "" = use built-in drawn icon.
--- Upload transparent white/gray PNGs exported from lucide.dev (24px or 64px).
+-- Icon assets (CENTRALIZED). Exact official Lucide icons, rendered from the
+-- unmodified SVGs in lucide-icons/svg to white transparent 256x256 PNGs
+-- (lucide-icons/png). Upload each PNG as an Image in Creator Hub, then paste
+-- the ID as "rbxassetid://<id>". Empty "" = icon NOT uploaded yet: a plain text
+-- placeholder is shown and a warning is printed to the Output window.
 ---------------------------------------------------------------------
 local IconAssets = {
-	["x"] = "",
-	["panel-left-close"] = "",
-	["panel-left-open"] = "",
-	["house"] = "",
-	["eye"] = "",
-	["swords"] = "",
-	["sport-shoe"] = "",
-	["layout-grid-circles"] = "",
+	["x"] = "", -- png/x.png
+	["panel-left-close"] = "", -- png/panel-left-close.png
+	["panel-left-open"] = "", -- png/panel-left-open.png
+	["house"] = "", -- png/house.png
+	["eye"] = "", -- png/eye.png
+	["swords"] = "", -- png/swords.png
+	["sport-shoe"] = "", -- png/sport-shoe.png
+	["layout-grid-circles"] = "", -- png/layout-grid-circles.png
 }
 
 ---------------------------------------------------------------------
@@ -183,130 +185,70 @@ local function hieuUngNut(nut: GuiButton, vienUI: UIStroke)
 end
 
 ---------------------------------------------------------------------
--- Icon system: image asset if configured + loaded, else drawn fallback.
--- Fallback shapes follow the Lucide 24x24 grid, 2px outline strokes.
+-- Icon system: official Lucide PNGs only (tinted via ImageColor3).
+-- No redrawn approximations. Missing/failed assets show a plain text placeholder.
 ---------------------------------------------------------------------
-local function duong(cha: Instance, x1: number, y1: number, x2: number, y2: number, ds: { any })
-	local dx, dy = x2 - x1, y2 - y1
-	local f = tao("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromOffset((x1 + x2) / 2, (y1 + y2) / 2),
-		Size = UDim2.fromOffset(math.sqrt(dx * dx + dy * dy) + 1.5, 2),
-		Rotation = math.deg(math.atan2(dy, dx)),
-		BackgroundColor3 = CH.mauChu2,
-		BorderSizePixel = 0,
-		ZIndex = cha.ZIndex + 1,
-	}, cha)
-	goc(f, 1)
-	table.insert(ds, function(m: Color3)
-		f.BackgroundColor3 = m
-	end)
-end
-
-local function hop(cha: Instance, x: number, y: number, w: number, h: number, r: number, ds: { any })
-	local f = tao("Frame", {
-		Position = UDim2.fromOffset(x + 1, y + 1),
-		Size = UDim2.fromOffset(w - 2, h - 2),
-		BackgroundTransparency = 1,
-		ZIndex = cha.ZIndex + 1,
-	}, cha)
-	goc(f, r)
-	local s = tao("UIStroke", { Color = CH.mauChu2, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, f)
-	table.insert(ds, function(m: Color3)
-		s.Color = m
-	end)
-end
-
-local ve: { [string]: (Instance, { any }) -> () } = {
-	["x"] = function(c, d)
-		duong(c, 6, 6, 18, 18, d)
-		duong(c, 18, 6, 6, 18, d)
-	end,
-	["panel-left-close"] = function(c, d)
-		hop(c, 3, 3, 18, 18, 4, d)
-		duong(c, 9, 4, 9, 20, d)
-		duong(c, 16, 9, 13, 12, d)
-		duong(c, 13, 12, 16, 15, d)
-	end,
-	["panel-left-open"] = function(c, d)
-		hop(c, 3, 3, 18, 18, 4, d)
-		duong(c, 9, 4, 9, 20, d)
-		duong(c, 13, 9, 16, 12, d)
-		duong(c, 16, 12, 13, 15, d)
-	end,
-	["house"] = function(c, d)
-		duong(c, 3, 11, 12, 4, d)
-		duong(c, 12, 4, 21, 11, d)
-		hop(c, 6, 10, 12, 11, 2, d)
-	end,
-	["eye"] = function(c, d)
-		hop(c, 2, 6, 20, 12, 6, d)
-		hop(c, 9, 9, 6, 6, 3, d)
-	end,
-	["swords"] = function(c, d)
-		duong(c, 4, 4, 15, 15, d)
-		duong(c, 12, 18, 18, 12, d)
-		duong(c, 15, 15, 20, 20, d)
-		duong(c, 20, 4, 9, 15, d)
-		duong(c, 12, 18, 6, 12, d)
-		duong(c, 9, 15, 4, 20, d)
-	end,
-	["sport-shoe"] = function(c, d)
-		hop(c, 3, 13, 18, 7, 3, d)
-		duong(c, 5, 13, 5, 5, d)
-		duong(c, 5, 5, 10, 6, d)
-		duong(c, 10, 6, 14, 11, d)
-	end,
-	["layout-grid-circles"] = function(c, d)
-		hop(c, 3, 3, 7, 7, 4, d)
-		hop(c, 14, 3, 7, 7, 4, d)
-		hop(c, 3, 14, 7, 7, 4, d)
-		hop(c, 14, 14, 7, 7, 4, d)
-	end,
+local FallbackText = {
+	["x"] = "x",
+	["panel-left-close"] = "<",
+	["panel-left-open"] = ">",
+	["house"] = "H",
+	["eye"] = "V",
+	["swords"] = "C",
+	["sport-shoe"] = "M",
+	["layout-grid-circles"] = "Mi",
 }
+local iconThieu = {} -- names with no asset ID configured
 
 local function taoIcon(cha: Instance, ten: string, z: number)
 	local gc = tao("Frame", {
 		Name = "Icon_" .. ten,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(24, 24),
+		Size = UDim2.fromOffset(24, 24), -- same canvas for every icon
 		BackgroundTransparency = 1,
 		ZIndex = z,
 	}, cha)
-	local ds = {}
-	local hinh = tao("Frame", { Name = "Shapes", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = z }, gc)
-	if ve[ten] then
-		ve[ten](hinh, ds)
-	end
-	local img: ImageLabel? = nil
+	local fb = tao("TextLabel", {
+		Name = "Fallback",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = FallbackText[ten] or "?",
+		TextColor3 = CH.mauChu2,
+		Font = CH.fontVua,
+		TextSize = 16,
+		Visible = false,
+		ZIndex = z,
+	}, gc)
+	local anh = tao("ImageLabel", {
+		Name = "Image",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ImageColor3 = CH.mauChu2,
+		ScaleType = Enum.ScaleType.Fit,
+		Visible = false,
+		ZIndex = z,
+	}, gc)
 	local id = IconAssets[ten]
 	if id and id ~= "" then
-		hinh.Visible = false
-		local anh = tao("ImageLabel", {
-			Name = "Image",
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = id,
-			ImageColor3 = CH.mauChu2,
-			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = z,
-		}, gc)
-		img = anh
-		task.delay(4, function() -- asset failed to load -> fall back to drawn icon
+		anh.Image = id
+		anh.Visible = true
+		task.delay(4, function()
 			if anh.Parent and not anh.IsLoaded then
 				anh.Visible = false
-				hinh.Visible = true
+				fb.Visible = true
+				warn(("[CamHub] Icon '%s' failed to load (%s). Check the upload and permissions."):format(ten, id))
 			end
 		end)
+	else
+		fb.Visible = true
+		if not table.find(iconThieu, ten) then
+			table.insert(iconThieu, ten)
+		end
 	end
 	local function datMau(m: Color3)
-		for _, f in ipairs(ds) do
-			f(m)
-		end
-		if img then
-			img.ImageColor3 = m
-		end
+		anh.ImageColor3 = m
+		fb.TextColor3 = m
 	end
 	return { gc = gc, datMau = datMau }
 end
@@ -857,4 +799,7 @@ gui.Destroying:Connect(function()
 		c:Disconnect()
 	end
 end)
+if #iconThieu > 0 then
+	warn("[CamHub] IconAssets missing for: " .. table.concat(iconThieu, ", ") .. ". Upload lucide-icons/png/<name>.png and fill IconAssets.")
+end
 khop()
