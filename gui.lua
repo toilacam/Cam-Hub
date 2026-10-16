@@ -1,6 +1,6 @@
--- CamHub.client.lua  (Update #2)
+-- CamHub.client.lua  (Update #4: lucide-roblox icons + draggable window)
 -- Place in: StarterPlayer > StarterPlayerScripts   (delete any older Cam Hub script first)
--- Adds: Lucide-style icon system, 5-section sidebar navigation with pages.
+-- Adds: icons from latte-soft/lucide-roblox, drag-to-move header zone.
 -- Keeps: logo, subtitle, close/reopen, four-corner resize, collapse, glass style.
 
 local Players = game:GetService("Players")
@@ -11,19 +11,21 @@ local nguoichoi = Players.LocalPlayer
 local pgui = nguoichoi:WaitForChild("PlayerGui")
 
 ---------------------------------------------------------------------
--- Icon assets (CENTRALIZED). Paste your uploaded Roblox image IDs here,
--- e.g. x = "rbxassetid://123456789". Empty "" = use built-in drawn icon.
--- Upload transparent white/gray PNGs exported from lucide.dev (24px or 64px).
+-- Lucide config (CENTRALIZED). Library: https://github.com/latte-soft/lucide-roblox
+-- Release asset "lucide-roblox.luau" (Wax bundle). Loaded with loadstring(game:HttpGet(...)).
+-- Library v0.1.3 ships Lucide 0.363.0, which predates some newer names, so each icon has an
+-- ordered candidate list: the requested name first, then the closest older equivalent.
 ---------------------------------------------------------------------
-local IconAssets = {
-	["x"] = "",
-	["panel-left-close"] = "",
-	["panel-left-open"] = "",
-	["house"] = "",
-	["eye"] = "",
-	["swords"] = "",
-	["sport-shoe"] = "",
-	["layout-grid-circles"] = "",
+local LUCIDE_URL = "https://github.com/latte-soft/lucide-roblox/releases/latest/download/lucide-roblox.luau"
+local LucideTen = {
+	["x"] = { "x" },
+	["panel-left-close"] = { "panel-left-close" },
+	["panel-left-open"] = { "panel-left-open" },
+	["house"] = { "house", "home" }, -- "home" = same icon, old name (renamed to "house" later)
+	["eye"] = { "eye" },
+	["swords"] = { "swords" },
+	["sport-shoe"] = { "sport-shoe", "footprints" }, -- not in 0.363.0 -> nearest: footprints
+	["layout-grid-circles"] = { "layout-grid-circles", "layout-grid" }, -- not in 0.363.0 -> nearest: layout-grid
 }
 
 ---------------------------------------------------------------------
@@ -39,6 +41,7 @@ local CH = {
 	cuasoTile = 0.9,
 	rs = { minW = 560, minH = 400, maxW = 1200, maxH = 900, le = 8, hit = 18 },
 
+	keoCao = 64, -- height of the drag zone at the top of the window
 	benMo = 270,
 	benThu = 76,
 	nguongThu = 600,
@@ -183,130 +186,109 @@ local function hieuUngNut(nut: GuiButton, vienUI: UIStroke)
 end
 
 ---------------------------------------------------------------------
--- Icon system: image asset if configured + loaded, else drawn fallback.
--- Fallback shapes follow the Lucide 24x24 grid, 2px outline strokes.
+-- Icon system: lucide-roblox via loadstring(game:HttpGet(...)); never breaks the GUI.
+-- Failure order: HttpGet/loadstring -> ReplicatedStorage.Lucide module -> text placeholders.
 ---------------------------------------------------------------------
-local function duong(cha: Instance, x1: number, y1: number, x2: number, y2: number, ds: { any })
-	local dx, dy = x2 - x1, y2 - y1
-	local f = tao("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromOffset((x1 + x2) / 2, (y1 + y2) / 2),
-		Size = UDim2.fromOffset(math.sqrt(dx * dx + dy * dy) + 1.5, 2),
-		Rotation = math.deg(math.atan2(dy, dx)),
-		BackgroundColor3 = CH.mauChu2,
-		BorderSizePixel = 0,
-		ZIndex = cha.ZIndex + 1,
-	}, cha)
-	goc(f, 1)
-	table.insert(ds, function(m: Color3)
-		f.BackgroundColor3 = m
+local Lucide: any = nil
+local loiLucide: string? = nil
+do
+	local ok, kq = pcall(function()
+		return loadstring(game:HttpGet(LUCIDE_URL))()
 	end)
+	if ok and type(kq) == "table" and kq.ImageLabel and kq.IconNames then
+		Lucide = kq
+	else
+		loiLucide = "loadstring/HttpGet failed: " .. tostring(kq)
+		local m = game:GetService("ReplicatedStorage"):FindFirstChild("Lucide")
+		if m and m:IsA("ModuleScript") then
+			local ok2, kq2 = pcall(require, m)
+			if ok2 and type(kq2) == "table" and kq2.ImageLabel and kq2.IconNames then
+				Lucide = kq2
+				loiLucide = nil
+			end
+		end
+	end
 end
 
-local function hop(cha: Instance, x: number, y: number, w: number, h: number, r: number, ds: { any })
-	local f = tao("Frame", {
-		Position = UDim2.fromOffset(x + 1, y + 1),
-		Size = UDim2.fromOffset(w - 2, h - 2),
-		BackgroundTransparency = 1,
-		ZIndex = cha.ZIndex + 1,
-	}, cha)
-	goc(f, r)
-	local s = tao("UIStroke", { Color = CH.mauChu2, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, f)
-	table.insert(ds, function(m: Color3)
-		s.Color = m
-	end)
+local tenCoSan: { [string]: boolean } = {}
+if Lucide then
+	for _, t in ipairs(Lucide.IconNames) do
+		tenCoSan[t] = true
+	end
 end
 
-local ve: { [string]: (Instance, { any }) -> () } = {
-	["x"] = function(c, d)
-		duong(c, 6, 6, 18, 18, d)
-		duong(c, 18, 6, 6, 18, d)
-	end,
-	["panel-left-close"] = function(c, d)
-		hop(c, 3, 3, 18, 18, 4, d)
-		duong(c, 9, 4, 9, 20, d)
-		duong(c, 16, 9, 13, 12, d)
-		duong(c, 13, 12, 16, 15, d)
-	end,
-	["panel-left-open"] = function(c, d)
-		hop(c, 3, 3, 18, 18, 4, d)
-		duong(c, 9, 4, 9, 20, d)
-		duong(c, 13, 9, 16, 12, d)
-		duong(c, 16, 12, 13, 15, d)
-	end,
-	["house"] = function(c, d)
-		duong(c, 3, 11, 12, 4, d)
-		duong(c, 12, 4, 21, 11, d)
-		hop(c, 6, 10, 12, 11, 2, d)
-	end,
-	["eye"] = function(c, d)
-		hop(c, 2, 6, 20, 12, 6, d)
-		hop(c, 9, 9, 6, 6, 3, d)
-	end,
-	["swords"] = function(c, d)
-		duong(c, 4, 4, 15, 15, d)
-		duong(c, 12, 18, 18, 12, d)
-		duong(c, 15, 15, 20, 20, d)
-		duong(c, 20, 4, 9, 15, d)
-		duong(c, 12, 18, 6, 12, d)
-		duong(c, 9, 15, 4, 20, d)
-	end,
-	["sport-shoe"] = function(c, d)
-		hop(c, 3, 13, 18, 7, 3, d)
-		duong(c, 5, 13, 5, 5, d)
-		duong(c, 5, 5, 10, 6, d)
-		duong(c, 10, 6, 14, 11, d)
-	end,
-	["layout-grid-circles"] = function(c, d)
-		hop(c, 3, 3, 7, 7, 4, d)
-		hop(c, 14, 3, 7, 7, 4, d)
-		hop(c, 3, 14, 7, 7, 4, d)
-		hop(c, 14, 14, 7, 7, 4, d)
-	end,
+local FallbackText = {
+	["x"] = "x",
+	["panel-left-close"] = "<",
+	["panel-left-open"] = ">",
+	["house"] = "H",
+	["eye"] = "V",
+	["swords"] = "C",
+	["sport-shoe"] = "M",
+	["layout-grid-circles"] = "Mi",
 }
+local iconThayThe = {} -- requested -> substitute actually used
+local iconThieu = {} -- no usable Lucide icon at all
+
+local function giaiTen(ten: string): string?
+	for i, t in ipairs(LucideTen[ten] or { ten }) do
+		if tenCoSan[t] then
+			if i > 1 then
+				iconThayThe[ten] = t
+			end
+			return t
+		end
+	end
+	return nil
+end
 
 local function taoIcon(cha: Instance, ten: string, z: number)
 	local gc = tao("Frame", {
 		Name = "Icon_" .. ten,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(24, 24),
+		Size = UDim2.fromOffset(24, 24), -- same canvas for every icon
 		BackgroundTransparency = 1,
 		ZIndex = z,
 	}, cha)
-	local ds = {}
-	local hinh = tao("Frame", { Name = "Shapes", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = z }, gc)
-	if ve[ten] then
-		ve[ten](hinh, ds)
-	end
-	local img: ImageLabel? = nil
-	local id = IconAssets[ten]
-	if id and id ~= "" then
-		hinh.Visible = false
-		local anh = tao("ImageLabel", {
+	local fb = tao("TextLabel", {
+		Name = "Fallback",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = FallbackText[ten] or "?",
+		TextColor3 = CH.mauChu2,
+		Font = CH.fontVua,
+		TextSize = 16,
+		Visible = false,
+		ZIndex = z,
+	}, gc)
+	local anh: ImageLabel? = nil
+	local ten2 = Lucide and giaiTen(ten)
+	if ten2 then
+		local ok, kq = pcall(Lucide.ImageLabel, ten2, 24, {
 			Name = "Image",
-			Size = UDim2.fromScale(1, 1),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
 			BackgroundTransparency = 1,
-			Image = id,
 			ImageColor3 = CH.mauChu2,
-			ScaleType = Enum.ScaleType.Fit,
 			ZIndex = z,
-		}, gc)
-		img = anh
-		task.delay(4, function() -- asset failed to load -> fall back to drawn icon
-			if anh.Parent and not anh.IsLoaded then
-				anh.Visible = false
-				hinh.Visible = true
-			end
-		end)
+			Parent = gc,
+		})
+		if ok then
+			anh = kq
+		else
+			warn(("[CamHub] Lucide.ImageLabel('%s') failed: %s"):format(ten2, tostring(kq)))
+		end
+	end
+	if not anh then
+		fb.Visible = true
+		table.insert(iconThieu, ten)
 	end
 	local function datMau(m: Color3)
-		for _, f in ipairs(ds) do
-			f(m)
+		if anh then
+			anh.ImageColor3 = m
 		end
-		if img then
-			img.ImageColor3 = m
-		end
+		fb.TextColor3 = m
 	end
 	return { gc = gc, datMau = datMau }
 end
@@ -385,6 +367,15 @@ tao("UIGradient", {
 }, cuaso)
 vien(cuaso, CH.trongVien - 0.04)
 anhsang(cuaso, CH.goc.cuaso, 0.07)
+
+-- Drag zone: transparent strip under the header; buttons (higher ZIndex, Active) sink their own clicks
+local vungKeo = tao("Frame", {
+	Name = "DragZone",
+	Size = UDim2.new(1, 0, 0, CH.keoCao),
+	BackgroundTransparency = 1,
+	Active = true,
+	ZIndex = 1,
+}, cuaso)
 
 -- Sidebar ------------------------------------------------------------
 local ben = tao("Frame", {
@@ -732,6 +723,7 @@ local gocRS = {
 	ResizeBottomRight = { hx = 1, vy = 1, anchor = Vector2.new(1, 1) },
 }
 
+local phienKeo: { bd: Vector2, x: number, y: number, input: InputObject }? = nil
 local phien: { g: any, bd: Vector2, x: number, y: number, w: number, h: number, input: InputObject }? = nil
 
 local function batdauRS(g: any, input: InputObject)
@@ -777,6 +769,33 @@ end
 
 local function finRS()
 	phien = nil
+	phienKeo = nil
+end
+
+local function batdauKeo(input: InputObject)
+	if phien then
+		return
+	end
+	phienKeo = {
+		bd = Vector2.new(input.Position.X, input.Position.Y),
+		x = kt.x, y = kt.y,
+		input = input,
+	}
+end
+
+local function capnhatKeo(input: InputObject)
+	local p = phienKeo
+	if not p then
+		return
+	end
+	local vp = vpSize()
+	local le = CH.rs.le
+	local x = p.x + (input.Position.X - p.bd.X)
+	local y = p.y + (input.Position.Y - p.bd.Y)
+	-- keep the whole window on screen
+	x = math.clamp(x, le, math.max(le, vp.X - kt.w - le))
+	y = math.clamp(y, le, math.max(le, vp.Y - kt.h - le))
+	datKT(x, y, kt.w, kt.h)
 end
 
 for ten, g in pairs(gocRS) do
@@ -797,24 +816,33 @@ for ten, g in pairs(gocRS) do
 	end)
 end
 
+vungKeo.InputBegan:Connect(function(input: InputObject)
+	local t = input.UserInputType
+	if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
+		batdauKeo(input)
+	end
+end)
+
 local kn = {}
 table.insert(kn, UserInputService.InputChanged:Connect(function(input: InputObject)
-	local p = phien
-	if not p then
-		return
-	end
 	local t = input.UserInputType
-	if t == Enum.UserInputType.MouseMovement or (t == Enum.UserInputType.Touch and input == p.input) then
-		capnhatRS(input)
+	if phien then
+		if t == Enum.UserInputType.MouseMovement or (t == Enum.UserInputType.Touch and input == phien.input) then
+			capnhatRS(input)
+		end
+	elseif phienKeo then
+		if t == Enum.UserInputType.MouseMovement or (t == Enum.UserInputType.Touch and input == phienKeo.input) then
+			capnhatKeo(input)
+		end
 	end
 end))
 table.insert(kn, UserInputService.InputEnded:Connect(function(input: InputObject)
-	local p = phien
-	if not p then
+	local t = input.UserInputType
+	local cur = (phien and phien.input) or (phienKeo and phienKeo.input)
+	if not cur then
 		return
 	end
-	local t = input.UserInputType
-	if t == Enum.UserInputType.MouseButton1 or (t == Enum.UserInputType.Touch and input == p.input) then
+	if t == Enum.UserInputType.MouseButton1 or (t == Enum.UserInputType.Touch and input == cur) then
 		finRS()
 	end
 end))
@@ -857,4 +885,13 @@ gui.Destroying:Connect(function()
 		c:Disconnect()
 	end
 end)
+if loiLucide then
+	warn("[CamHub] Lucide library not loaded (" .. loiLucide .. "). Using text placeholders. HttpGet/loadstring only exist in executor-style environments; in normal Studio put the lucide-roblox ModuleScript at ReplicatedStorage.Lucide.")
+end
+for goc_, dung in pairs(iconThayThe) do
+	warn(("[CamHub] Icon '%s' not in this Lucide version -> using '%s'."):format(goc_, dung))
+end
+if Lucide and #iconThieu > 0 then
+	warn("[CamHub] No Lucide icon found for: " .. table.concat(iconThieu, ", "))
+end
 khop()
