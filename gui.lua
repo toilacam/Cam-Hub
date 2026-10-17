@@ -35,7 +35,7 @@ local CH = {
 	ten = "Cam Hub",
 	phuGame = "Blox Fruits",
 	phu = "Nothing here yet. This space is ready for what comes next.",
-	logo = "rbxassetid://73919882310822",
+	logo = "http://www.roblox.com/asset/?id=73919882310822",
 
 	cuasoMax = Vector2.new(892, 700),
 	cuasoTile = 0.9,
