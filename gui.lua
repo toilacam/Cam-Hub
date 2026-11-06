@@ -877,6 +877,415 @@ local function khop()
 		datThu(true)
 	end
 end
+---------------------------------------------------------------------
+-- COMBAT MODULE — Silent Aim + Tracer + Target Selector
+-- Blox Fruits, LocalScript context
+-- Drawing API: game:GetService("RunService") Heartbeat loop + Drawing lib
+-- Silent aim: weld lại HitPart của skill về phía target gần nhất trước khi
+--             hitbox được server xử lý. Hoạt động bằng cách hook
+--             RemoteEvent "GameAction" / skill hitbox frame weld.
+-- Tracer     : Drawing.new("Line") từ màn hình local char → target mỗi frame.
+---------------------------------------------------------------------
+
+local RunService     = game:GetService("RunService")
+local cam2           = workspace.CurrentCamera
+
+---------------------------------------------------------------------
+-- State
+---------------------------------------------------------------------
+local SA = {
+	batSA    = false,  -- silent aim on/off
+	loaiMT   = "NPC",  -- "NPC" | "Players"
+	target   = nil :: Model?,
+	tracer   = nil :: any,
+	fovR     = 300,    -- pixel radius dùng để lọc target gần crosshair
+}
+
+---------------------------------------------------------------------
+-- Combat page — lấy frame đã tạo sẵn trong vòng lặp mucUI (index 3)
+---------------------------------------------------------------------
+local combatPage = mucUI[3].trang  -- Page_Combat
+
+-- Xoá placeholder text mặc định
+for _, v in ipairs(combatPage:GetChildren()) do
+	if v.Name == "Text" then v:Destroy() end
+end
+
+---------------------------------------------------------------------
+-- UI helpers (dùng lại helpers từ script gốc)
+---------------------------------------------------------------------
+local function divider(cha: Instance, posY: number)
+	tao("Frame", {
+		Name = "Div",
+		Position = UDim2.fromOffset(0, posY),
+		Size = UDim2.new(1, 0, 0, 1),
+		BackgroundColor3 = CH.mauVien,
+		BackgroundTransparency = CH.trongVien,
+		BorderSizePixel = 0,
+		ZIndex = cha.ZIndex + 1,
+	}, cha)
+end
+
+local function row(cha: Instance, posY: number, ten: string, zIdx: number)
+	local f = tao("Frame", {
+		Name = "Row_" .. ten,
+		Position = UDim2.fromOffset(0, posY),
+		Size = UDim2.new(1, 0, 0, 44),
+		BackgroundTransparency = 1,
+		ZIndex = zIdx,
+	}, cha)
+	nhan(f, {
+		Name = "RowLabel",
+		Text = ten,
+		Position = UDim2.fromOffset(16, 0),
+		Size = UDim2.new(0.6, -16, 1, 0),
+		TextSize = 14,
+		Font = CH.fontVua,
+		ZIndex = zIdx + 1,
+	})
+	return f
+end
+
+-- Toggle button (on/off pill)
+local function taoToggle(cha: Instance, onChange: (boolean) -> ())
+	local bat = false
+	local pill = tao("TextButton", {
+		Name = "Toggle",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -16, 0.5, 0),
+		Size = UDim2.fromOffset(52, 28),
+		BackgroundColor3 = Color3.fromRGB(60, 60, 58),
+		BackgroundTransparency = 0,
+		AutoButtonColor = false,
+		Text = "",
+		ZIndex = cha.ZIndex + 2,
+	}, cha)
+	goc(pill, 14)
+	local knob = tao("Frame", {
+		Name = "Knob",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, 14, 0.5, 0),
+		Size = UDim2.fromOffset(20, 20),
+		BackgroundColor3 = CH.mauChu2,
+		BorderSizePixel = 0,
+		ZIndex = cha.ZIndex + 3,
+	}, pill)
+	goc(knob, 10)
+
+	local function capNhat(trang: boolean)
+		bat = trang
+		local offX = trang and 38 or 14
+		local mauNen = trang and Color3.fromRGB(80, 220, 120) or Color3.fromRGB(60, 60, 58)
+		tweenTo(pill, { BackgroundColor3 = mauNen }, CH.tgNut)
+		tweenTo(knob, { Position = UDim2.new(0, offX, 0.5, 0), BackgroundColor3 = Color3.new(1,1,1) }, CH.tgNut)
+		onChange(bat)
+	end
+
+	pill.Activated:Connect(function() capNhat(not bat) end)
+	return { pill = pill, datTrang = capNhat }
+end
+
+-- Radio group (2 lựa chọn)
+local function taoRadio(cha: Instance, options: { string }, onChange: (string) -> ())
+	local chonHien = options[1]
+	local nuts = {}
+	local pad = tao("Frame", {
+		Name = "RadioGroup",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -16, 0.5, 0),
+		Size = UDim2.fromOffset(170, 30),
+		BackgroundTransparency = 1,
+		ZIndex = cha.ZIndex + 2,
+	}, cha)
+	tao("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 6),
+	}, pad)
+
+	local function capNhat(opt: string)
+		chonHien = opt
+		for _, d in ipairs(nuts) do
+			local sel = d.opt == opt
+			tweenTo(d.nut, {
+				BackgroundColor3 = sel and Color3.fromRGB(80, 220, 120) or Color3.fromRGB(50, 50, 48),
+				BackgroundTransparency = sel and 0 or 0,
+			}, CH.tgNut)
+			tweenTo(d.lbl, { TextColor3 = sel and Color3.fromRGB(20, 20, 18) or CH.mauChu2 }, CH.tgNut)
+		end
+		onChange(opt)
+	end
+
+	for idx, opt in ipairs(options) do
+		local nut = tao("TextButton", {
+			Name = "Radio_" .. opt,
+			Size = UDim2.fromOffset(78, 30),
+			BackgroundColor3 = idx == 1 and Color3.fromRGB(80, 220, 120) or Color3.fromRGB(50, 50, 48),
+			BackgroundTransparency = 0,
+			AutoButtonColor = false,
+			Text = "",
+			ZIndex = cha.ZIndex + 3,
+		}, pad)
+		goc(nut, 8)
+		local lbl = nhan(nut, {
+			Text = opt,
+			Size = UDim2.fromScale(1, 1),
+			TextSize = 13,
+			Font = CH.fontVua,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextColor3 = idx == 1 and Color3.fromRGB(20, 20, 18) or CH.mauChu2,
+			ZIndex = cha.ZIndex + 4,
+		})
+		nuts[idx] = { nut = nut, lbl = lbl, opt = opt }
+		nut.Activated:Connect(function() capNhat(opt) end)
+	end
+
+	return { datChon = capNhat }
+end
+
+---------------------------------------------------------------------
+-- Populate Combat page
+---------------------------------------------------------------------
+local combatZ = combatPage.ZIndex + 1
+
+-- Section header
+nhan(combatPage, {
+	Name = "SectionAim",
+	Text = "AIMBOT",
+	Position = UDim2.fromOffset(16, 12),
+	Size = UDim2.new(1, -32, 0, 18),
+	TextSize = 11,
+	Font = CH.fontDam,
+	TextColor3 = CH.mauChu2,
+	ZIndex = combatZ,
+})
+
+-- Row 1: Silent Aim toggle
+local rowSA = row(combatPage, 32, "Silent Aim", combatZ)
+local togSA = taoToggle(rowSA, function(trang)
+	SA.batSA = trang
+	if not trang then
+		-- tắt tracer
+		if SA.tracer then
+			SA.tracer.Visible = false
+		end
+		SA.target = nil
+	end
+end)
+
+divider(combatPage, 76)
+
+-- Row 2: Target selector
+local rowTG = row(combatPage, 80, "Target", combatZ)
+taoRadio(rowTG, { "NPC", "Players" }, function(opt)
+	SA.loaiMT = opt
+	SA.target = nil  -- reset target khi đổi loại
+end)
+
+divider(combatPage, 124)
+
+-- FOV display label (thông tin)
+nhan(combatPage, {
+	Name = "FovHint",
+	Text = ("FOV Radius: %d px — target gần crosshair nhất trong vòng này."):format(SA.fovR),
+	Position = UDim2.fromOffset(16, 132),
+	Size = UDim2.new(1, -32, 0, 18),
+	TextSize = 11,
+	Font = CH.font,
+	TextColor3 = CH.mauChu2,
+	ZIndex = combatZ,
+})
+
+---------------------------------------------------------------------
+-- Tracer: Drawing line
+---------------------------------------------------------------------
+local tracerLine = Drawing.new("Line")
+tracerLine.Thickness  = 1.5
+tracerLine.Color      = Color3.fromRGB(255, 80, 80)
+tracerLine.Transparency = 0.25
+tracerLine.Visible    = false
+SA.tracer = tracerLine
+
+---------------------------------------------------------------------
+-- Helpers: tìm target
+---------------------------------------------------------------------
+local function layHRP(char: Model): BasePart?
+	return (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")) :: BasePart?
+end
+
+local function sodiemMH(world: Vector3): (Vector3, boolean)
+	return cam2:WorldToViewportPoint(world)
+end
+
+local function tiemGan(): Model?
+	local nguoichoi2 = Players.LocalPlayer
+	local charLocal = nguoichoi2.Character
+	if not charLocal then return nil end
+	local hrpLocal = layHRP(charLocal)
+	if not hrpLocal then return nil end
+
+	-- Crosshair ở giữa viewport
+	local vp = cam2.ViewportSize
+	local tam = Vector2.new(vp.X / 2, vp.Y / 2)
+
+	local ganNhat: Model? = nil
+	local khoangNhat = math.huge
+
+	-- ---- NPC ----
+	if SA.loaiMT == "NPC" then
+		local folder = workspace:FindFirstChild("Enemies") or workspace:FindFirstChild("Mobs")
+		local nguon = folder and folder:GetChildren() or workspace:GetChildren()
+		for _, v in ipairs(nguon) do
+			if v:IsA("Model") and v ~= charLocal then
+				local hum = v:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health > 0 then
+					local hrp = layHRP(v)
+					if hrp then
+						local sp, inVP = sodiemMH(hrp.Position)
+						if inVP then
+							local dist2D = (Vector2.new(sp.X, sp.Y) - tam).Magnitude
+							if dist2D < SA.fovR and dist2D < khoangNhat then
+								khoangNhat = dist2D
+								ganNhat = v
+							end
+						end
+					end
+				end
+			end
+		end
+
+	-- ---- Players ----
+	elseif SA.loaiMT == "Players" then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= nguoichoi2 and p.Character then
+				local char = p.Character
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health > 0 then
+					local hrp = layHRP(char)
+					if hrp then
+						local sp, inVP = sodiemMH(hrp.Position)
+						if inVP then
+							local dist2D = (Vector2.new(sp.X, sp.Y) - tam).Magnitude
+							if dist2D < SA.fovR and dist2D < khoangNhat then
+								khoangNhat = dist2D
+								ganNhat = char
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return ganNhat
+end
+
+---------------------------------------------------------------------
+-- Silent Aim: hook toàn bộ RemoteEvent "GameAction" (Blox Fruits)
+-- Redirect hướng skill bằng cách đọc / ghi args trước khi fire tới server.
+-- Blox Fruits dùng pattern:  Remote:FireServer("UseSkill", dir, ...)
+-- Ta thay dir = (hrpTarget.Position - hrpLocal.Position).Unit
+---------------------------------------------------------------------
+local hookConn: RBXScriptConnection? = nil
+
+local function batHook()
+	if hookConn then return end
+	-- Tìm RemoteEvent "GameAction" trong ReplicatedStorage / workspace
+	local RS2 = game:GetService("ReplicatedStorage")
+	local remote: RemoteEvent? = RS2:FindFirstChild("GameAction", true) :: RemoteEvent?
+		or RS2:FindFirstChild("Remote", true) :: RemoteEvent?
+
+	if not remote then
+		warn("[CamHub/SilentAim] Không tìm thấy RemoteEvent 'GameAction'. Skill redirect sẽ không hoạt động cho đến khi tìm thấy.")
+		return
+	end
+
+	-- Lưu FireServer gốc
+	local fireGoc = remote.FireServer
+	local nguoichoi3 = Players.LocalPlayer
+
+	-- Monkey-patch FireServer
+	remote.FireServer = function(self, action: string, ...)
+		if SA.batSA and SA.target then
+			local charLocal = nguoichoi3.Character
+			local hrpLocal = charLocal and layHRP(charLocal)
+			local hrpTarget = layHRP(SA.target)
+			if hrpLocal and hrpTarget then
+				local args = { ... }
+				-- args[1] thường là direction Vector3 trong Blox Fruits
+				if type(args[1]) == "userdata" and typeof(args[1]) == "Vector3" then
+					args[1] = (hrpTarget.Position - hrpLocal.Position).Unit
+				end
+				return fireGoc(self, action, table.unpack(args))
+			end
+		end
+		return fireGoc(self, action, ...)
+	end :: any
+
+	hookConn = remote.ChildAdded:Connect(function() end) -- dummy để giữ ref
+end
+
+local function thoatHook()
+	if hookConn then
+		hookConn:Disconnect()
+		hookConn = nil
+	end
+end
+
+---------------------------------------------------------------------
+-- Heartbeat loop: scan target + vẽ tracer mỗi frame
+---------------------------------------------------------------------
+local kn2 = RunService.Heartbeat:Connect(function()
+	if not SA.batSA then
+		tracerLine.Visible = false
+		return
+	end
+
+	-- Kích hoạt hook lần đầu khi SA bật
+	batHook()
+
+	-- Tìm target gần nhất
+	SA.target = tiemGan()
+
+	local nguoichoi4 = Players.LocalPlayer
+	local charLocal  = nguoichoi4.Character
+	local hrpLocal   = charLocal and layHRP(charLocal)
+
+	if SA.target and hrpLocal then
+		local hrpTarget = layHRP(SA.target)
+		if hrpTarget then
+			-- Vẽ tracer
+			local spFrom, inFrom = sodiemMH(hrpLocal.Position)
+			local spTo,   inTo   = sodiemMH(hrpTarget.Position)
+			if inFrom and inTo then
+				tracerLine.From    = Vector2.new(spFrom.X, spFrom.Y)
+				tracerLine.To      = Vector2.new(spTo.X, spTo.Y)
+				tracerLine.Visible = true
+			else
+				tracerLine.Visible = false
+			end
+		else
+			tracerLine.Visible = false
+		end
+	else
+		tracerLine.Visible = false
+		SA.target = nil
+	end
+end)
+
+-- Dọn dẹp khi GUI bị destroy
+gui.Destroying:Connect(function()
+	kn2:Disconnect()
+	thoatHook()
+	if tracerLine then
+		tracerLine.Remove()
+	end
+end)
+
+---------------------------------------------------------------------
+-- Done. Combat tab: Silent Aim + Target Selector + Tracer live.
+---------------------------------------------------------------------
 if cam then
 	table.insert(kn, cam:GetPropertyChangedSignal("ViewportSize"):Connect(khop))
 end
